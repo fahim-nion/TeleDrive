@@ -19,15 +19,13 @@ class CacheService {
     }
   }
 
-  /**
-   * Retrieves a cached thumbnail as a Blob URL
-   * @param key Format: "msgId:size"
-   */
   async getThumbnail(key: string): Promise<string | null> {
     if (!this.db) return null;
     try {
       const blob = await (await this.db).get(THUMB_STORE, key);
       if (blob) {
+        // Log to console for user verification
+        console.debug(`%c 💾 Local Disk Cache Hit: ${key}`, 'color: #10B981');
         return URL.createObjectURL(blob);
       }
     } catch (e) {
@@ -36,25 +34,15 @@ class CacheService {
     return null;
   }
 
-  /**
-   * Stores a thumbnail Buffer into IndexedDB
-   */
-  async setThumbnail(key: string, buffer: Buffer | Uint8Array) {
+  async setThumbnail(key: string, buffer: Uint8Array) {
     if (!this.db) return;
     try {
       const blob = new Blob([buffer], { type: 'image/jpeg' });
       await (await this.db).put(THUMB_STORE, blob, key);
+      console.debug(`%c ✨ Saved to Local Disk: ${key}`, 'color: #6366F1');
     } catch (e) {
       console.error("Cache Write Error:", e);
     }
-  }
-
-  /**
-   * Clears the entire cache (used for Sync Nodes)
-   */
-  async clear() {
-    if (!this.db) return;
-    await (await this.db).clear(THUMB_STORE);
   }
 }
 
