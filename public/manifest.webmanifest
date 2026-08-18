@@ -1,0 +1,17 @@
+{
+  "name": "TeleDrive",
+  "short_name": "TeleDrive",
+  "description": "Secure Personal Media Cloud powered by Telegram",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0E14",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3521/3521360.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
