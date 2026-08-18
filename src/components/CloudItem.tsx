@@ -17,28 +17,20 @@ const CloudItem: React.FC<Props> = ({ file, onClick }) => {
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !thumbUrl && (file as any).thumbnail) {
         const loadThumb = async () => {
-          // Specifically request the "small" (low-res) version for the grid
-          const url = await getThumbnail((file as any).thumbnail, 'small');
+          const url = await getThumbnail((file as any).thumbnail);
           setThumbUrl(url);
         };
         loadThumb();
         observer.disconnect();
       }
     }, { 
-      // EAGER LOADING: Start downloading when item is 400px away from viewport
-      rootMargin: '400px' 
+      // PRE-FETCH: Start loading when user is within 800px of the image
+      rootMargin: '800px' 
     });
 
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [file, thumbUrl]);
-
-  const formatDuration = (s?: number) => {
-    if (!s) return '0:00';
-    const m = Math.floor(s / 60);
-    const rs = s % 60;
-    return `${m}:${rs.toString().padStart(2, '0')}`;
-  };
 
   return (
     <div ref={containerRef} className="card" style={{ padding: '6px', cursor: 'pointer' }} onClick={onClick}>
@@ -49,7 +41,7 @@ const CloudItem: React.FC<Props> = ({ file, onClick }) => {
         {thumbUrl ? (
           <img 
             src={thumbUrl} 
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isLoaded ? 1 : 0 }} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isLoaded ? 1 : 0, transition: 'opacity 0.2s' }} 
             onLoad={() => setIsLoaded(true)}
           />
         ) : (
@@ -59,17 +51,12 @@ const CloudItem: React.FC<Props> = ({ file, onClick }) => {
         )}
 
         {file.isVideo && (
-          <>
-            <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold', zIndex: 2 }}>
-              {formatDuration(file.duration)}
-            </div>
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(255,255,255,0.2)', padding: '8px', borderRadius: '50%', backdropFilter: 'blur(4px)', zIndex: 2 }}>
-              <IconVideo size={14} color="white" />
-            </div>
-          </>
+          <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold', zIndex: 2 }}>
+            {Math.floor(file.duration! / 60)}:{(file.duration! % 60).toString().padStart(2, '0')}
+          </div>
         )}
       </div>
-      <div style={{ fontSize: '10px', fontWeight: '600', padding: '8px 2px 2px 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text)' }}>
+      <div style={{ fontSize: '9px', fontWeight: '600', padding: '6px 2px 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-muted)' }}>
         {file.name}
       </div>
     </div>

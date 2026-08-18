@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CloudFile } from '../types';
-import { deleteFileFromTelegram, downloadFileFromTelegram, fetchCloudFiles } from '../services/cloud';
+import { fetchCloudFiles, downloadFileFromTelegram, deleteFileFromTelegram } from '../services/cloud';
 import CloudItem from './CloudItem';
 import MediaViewer from './MediaViewer';
 import { IconRefresh } from './Icons';
@@ -12,21 +12,31 @@ interface Props {
 
 const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [allFiles, setAllFiles] = useState<CloudFile[]>(initialFiles);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => { setAllFiles(initialFiles); }, [initialFiles]);
+  useEffect(() => {
+    setAllFiles(initialFiles);
+    setHasMore(true);
+  }, [initialFiles]);
 
-  const handleLoadMore = async () => {
-    if (allFiles.length === 0 || loadingMore) return;
+  const loadMore = async () => {
+    if (loadingMore || allFiles.length === 0) return;
     setLoadingMore(true);
+
+    // Get the ID of the oldest message in our current list
+    const lastId = allFiles[allFiles.length - 1].messageId;
+    
     try {
-      const lastId = allFiles[allFiles.length - 1].messageId;
       const olderFiles = await fetchCloudFiles(lastId);
-      if (olderFiles.length > 0) {
+      if (olderFiles.length === 0) {
+        setHasMore(false);
+      } else {
         setAllFiles(prev => [...prev, ...olderFiles]);
       }
+    } catch (e) {
+      console.error("Failed to load more:", e);
     } finally {
       setLoadingMore(false);
     }
@@ -40,13 +50,11 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
   });
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Cloud Stream</h2>
-        <button onClick={() => { setSyncing(true); onRefresh(); setTimeout(() => setSyncing(false), 2000); }} 
-          disabled={syncing} className="glass-card" 
-          style={{ padding: '10px 16px', fontWeight: '800', display: 'flex', gap: '8px', alignItems: 'center', fontSize: '11px', cursor: 'pointer', color: 'inherit' }}>
-          <IconRefresh size={14} className={syncing ? 'spin' : ''} /> SYNC NODES
+        <button onClick={onRefresh} className="glass-card" style={{ padding: '8px 16px', fontWeight: 'bold', display: 'flex', gap: '8px', alignItems: 'center', fontSize: '11px', cursor: 'pointer', color: 'inherit' }}>
+          <IconRefresh size={14} /> SYNC
         </button>
       </div>
 
@@ -63,13 +71,18 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
         </div>
       ))}
 
-      {/* RESTORED LOAD MORE BUTTON */}
-      <div style={{ textAlign: 'center', padding: '40px 0 100px 0' }}>
-        <button onClick={handleLoadMore} disabled={loadingMore}
-          className="glass-card" style={{ padding: '14px 40px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: 'inherit' }}>
-          {loadingMore ? 'PULLING OLDER NODES...' : 'LOAD MORE MEDIA'}
-        </button>
-      </div>
+      {hasMore && (
+        <div style={{ textAlign: 'center', padding: '40px 0 120px 0' }}>
+          <button 
+            onClick={loadMore} 
+            disabled={loadingMore}
+            className="glass-card"
+            style={{ padding: '12px 40px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: 'inherit' }}
+          >
+            {loadingMore ? 'PULLING OLDER DATA...' : 'LOAD MORE MEDIA'}
+          </button>
+        </div>
+      )}
 
       {selectedIndex !== null && (
         <MediaViewer 
@@ -77,11 +90,11 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
           onClose={() => setSelectedIndex(null)} onIndexChange={setSelectedIndex}
           onDelete={async (id: number) => { await deleteFileFromTelegram(id); onRefresh(); setSelectedIndex(null); }}
           onDownload={async (file: CloudFile) => {
-            const buf = await downloadFileFromTelegram(file.messageId, () => {});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([buf], { type: file.mimeType }));
-            a.download = file.name;
-            a.click();
+             const buf = await downloadFileFromTelegram(file.messageId, () => {});
+             const a = document.createElement('a');
+             a.href = URL.createObjectURL(new Blob([buf], { type: file.mimeType }));
+             a.download = file.name;
+             a.click();
           }}
         />
       )}

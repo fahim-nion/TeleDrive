@@ -3,9 +3,8 @@ import { telegramService } from "./telegram";
 import { cacheService } from "./cache";
 import { CloudFile } from "../types";
 
-// SPEED FIX: Parallel Concurrency increased to 6
 let activeRequests = 0;
-const MAX_CONCURRENT = 6; 
+const MAX_CONCURRENT = 8; // Increased for high-speed Wi-Fi
 const queue: (() => void)[] = [];
 
 const processQueue = () => {
@@ -15,8 +14,8 @@ const processQueue = () => {
   }
 };
 
-export async function getThumbnail(message: Api.Message, size: 'small' | 'large' = 'small'): Promise<string | null> {
-  const cacheKey = `thumb:${message.id}:${size}`;
+export async function getThumbnail(message: Api.Message): Promise<string | null> {
+  const cacheKey = `thumb_lowres:${message.id}`;
   const cachedUrl = await cacheService.getThumbnail(cacheKey);
   if (cachedUrl) return cachedUrl;
 
@@ -26,10 +25,9 @@ export async function getThumbnail(message: Api.Message, size: 'small' | 'large'
       if (!client || !client.connected) { resolve(null); return; }
       
       try {
-        // LOW-RES LOGIC: 
-        // We look for 's' (smallest) or 'm' (medium) size thumbnails in Telegram
+        // Specifically requesting the 'm' size (medium) which is ~10-15KB
         const buffer = await client.downloadMedia(message, { 
-          thumbClass: size === 'small' ? 'm' : 'x' 
+          thumbClass: "m" 
         });
 
         if (buffer) {
@@ -37,20 +35,24 @@ export async function getThumbnail(message: Api.Message, size: 'small' | 'large'
           resolve(URL.createObjectURL(new Blob([buffer], { type: 'image/jpeg' })));
         } else resolve(null);
       } catch { resolve(null); }
-      finally {
-        activeRequests--;
-        processQueue();
-      }
+      finally { activeRequests--; processQueue(); }
     };
-
     queue.push(startRequest);
     processQueue();
   });
 }
 
+/**
+ * FETCH WITH PAGINATION
+ * offsetId: The ID of the last message in your current list
+ */
 export async function fetchCloudFiles(offsetId: number = 0): Promise<CloudFile[]> {
   const client = await telegramService.init();
-  const messages = await client.getMessages("me", { limit: 50, offsetId });
+  
+  const messages = await client.getMessages("me", { 
+    limit: 60,
+    offsetId: offsetId // This tells Telegram: "Give me messages OLDER than this ID"
+  });
   
   return messages
     .filter(msg => msg.media instanceof Api.MessageMediaDocument)
@@ -70,11 +72,12 @@ export async function fetchCloudFiles(offsetId: number = 0): Promise<CloudFile[]
         thumbnail: (doc.thumbs && doc.thumbs.length > 0) ? msg : undefined,
         isVideo: doc.mimeType.startsWith('video/') || !!videoAttr,
         duration: videoAttr?.duration || 0,
+        selected: false
       };
     });
 }
 
-// downloadFileFromTelegram and delete remain same as previous working state
+// downloadFileFromTelegram & delete remain exactly as before
 export async function downloadFileFromTelegram(messageId: number, onProgress: (p: number) => void) {
   const client = await telegramService.init();
   const messages = await client.getMessages("me", { ids: [messageId] });
