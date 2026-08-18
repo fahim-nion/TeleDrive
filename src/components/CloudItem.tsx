@@ -23,10 +23,7 @@ const CloudItem: React.FC<Props> = ({ file, onClick }) => {
         loadThumb();
         observer.disconnect();
       }
-    }, { 
-      // PRE-FETCH: Start loading when user is within 800px of the image
-      rootMargin: '800px' 
-    });
+    }, { rootMargin: '600px' }); // Load early
 
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
@@ -36,15 +33,19 @@ const CloudItem: React.FC<Props> = ({ file, onClick }) => {
     <div ref={containerRef} className="card" style={{ padding: '6px', cursor: 'pointer' }} onClick={onClick}>
       <div style={{ aspectRatio: '1/1', background: 'var(--accent)', borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
         
-        {!isLoaded && <div className="shimmer" style={{ position: 'absolute', inset: 0, zIndex: 1 }} />}
+        {/* LEVEL 1: INSTANT BLURRED PREVIEW (from metadata) */}
+        {!isLoaded && (file as any).instantThumb && (
+            <img src={(file as any).instantThumb} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'blur(10px)', transform: 'scale(1.2)' }} />
+        )}
         
+        {/* LEVEL 2: HIGH-RES DOWNLOAD */}
         {thumbUrl ? (
           <img 
             src={thumbUrl} 
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isLoaded ? 1 : 0, transition: 'opacity 0.2s' }} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isLoaded ? 1 : 0, transition: 'opacity 0.3s' }} 
             onLoad={() => setIsLoaded(true)}
           />
-        ) : (
+        ) : ! (file as any).instantThumb && (
           <div style={{ opacity: 0.1 }}>
             {file.isVideo ? <IconVideo size={32} color="var(--text)" /> : <IconImage size={32} color="var(--text)" />}
           </div>
@@ -56,7 +57,7 @@ const CloudItem: React.FC<Props> = ({ file, onClick }) => {
           </div>
         )}
       </div>
-      <div style={{ fontSize: '9px', fontWeight: '600', padding: '6px 2px 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-muted)' }}>
+      <div style={{ fontSize: '10px', fontWeight: '600', padding: '8px 2px 2px 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text)' }}>
         {file.name}
       </div>
     </div>

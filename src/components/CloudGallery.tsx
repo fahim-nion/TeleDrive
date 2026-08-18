@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CloudFile } from '../types';
-import { fetchCloudFiles, downloadFileFromTelegram, deleteFileFromTelegram } from '../services/cloud';
+import { deleteFileFromTelegram, downloadFileFromTelegram } from '../services/cloud';
 import CloudItem from './CloudItem';
 import MediaViewer from './MediaViewer';
 import { IconRefresh } from './Icons';
@@ -8,42 +8,15 @@ import { IconRefresh } from './Icons';
 interface Props {
   initialFiles: CloudFile[];
   onRefresh: () => void;
+  onLoadMore: () => void;
+  loadingMore: boolean;
 }
 
-const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
+const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh, onLoadMore, loadingMore }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [allFiles, setAllFiles] = useState<CloudFile[]>(initialFiles);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
-  useEffect(() => {
-    setAllFiles(initialFiles);
-    setHasMore(true);
-  }, [initialFiles]);
-
-  const loadMore = async () => {
-    if (loadingMore || allFiles.length === 0) return;
-    setLoadingMore(true);
-
-    // Get the ID of the oldest message in our current list
-    const lastId = allFiles[allFiles.length - 1].messageId;
-    
-    try {
-      const olderFiles = await fetchCloudFiles(lastId);
-      if (olderFiles.length === 0) {
-        setHasMore(false);
-      } else {
-        setAllFiles(prev => [...prev, ...olderFiles]);
-      }
-    } catch (e) {
-      console.error("Failed to load more:", e);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
 
   const groups: Record<string, CloudFile[]> = {};
-  allFiles.forEach(f => {
+  initialFiles.forEach(f => {
     const date = new Date(f.date * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     if (!groups[date]) groups[date] = [];
     groups[date].push(f);
@@ -65,36 +38,35 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
           </div>
           <div className="gallery-grid">
             {groups[date].map((f) => (
-              <CloudItem key={f.messageId} file={f} onClick={() => setSelectedIndex(allFiles.indexOf(f))} />
+              <CloudItem key={f.messageId} file={f} onClick={() => setSelectedIndex(initialFiles.indexOf(f))} />
             ))}
           </div>
         </div>
       ))}
 
-      {hasMore && (
-        <div style={{ textAlign: 'center', padding: '40px 0 120px 0' }}>
-          <button 
-            onClick={loadMore} 
-            disabled={loadingMore}
-            className="glass-card"
-            style={{ padding: '12px 40px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: 'inherit' }}
-          >
-            {loadingMore ? 'PULLING OLDER DATA...' : 'LOAD MORE MEDIA'}
-          </button>
-        </div>
-      )}
+      {/* LOAD MORE - Always anchored at the bottom */}
+      <div style={{ textAlign: 'center', padding: '40px 0 120px 0' }}>
+        <button 
+          onClick={onLoadMore} 
+          disabled={loadingMore}
+          className="glass-card"
+          style={{ padding: '14px 40px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: 'inherit' }}
+        >
+          {loadingMore ? 'PULLING OLDER DATA...' : 'LOAD MORE MEDIA'}
+        </button>
+      </div>
 
       {selectedIndex !== null && (
         <MediaViewer 
-          files={allFiles} currentIndex={selectedIndex} 
+          files={initialFiles} currentIndex={selectedIndex} 
           onClose={() => setSelectedIndex(null)} onIndexChange={setSelectedIndex}
           onDelete={async (id: number) => { await deleteFileFromTelegram(id); onRefresh(); setSelectedIndex(null); }}
           onDownload={async (file: CloudFile) => {
-             const buf = await downloadFileFromTelegram(file.messageId, () => {});
-             const a = document.createElement('a');
-             a.href = URL.createObjectURL(new Blob([buf], { type: file.mimeType }));
-             a.download = file.name;
-             a.click();
+            const buf = await downloadFileFromTelegram(file.messageId, () => {});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([buf], { type: file.mimeType }));
+            a.download = file.name;
+            a.click();
           }}
         />
       )}
