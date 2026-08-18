@@ -51,12 +51,7 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
       </div>
 
       {Object.keys(groups).map(date => (
-        <div key={date} style={{ 
-          marginBottom: '32px',
-          /* PERFORMANCE FIX: Virtualization hint for browser */
-          contentVisibility: 'auto', 
-          containIntrinsicSize: '0 500px' 
-        }}>
+        <div key={date} style={{ marginBottom: '32px' }}>
           <div style={{ position: 'sticky', top: '70px', zIndex: 10, padding: '10px 16px', borderRadius: '14px', marginBottom: '16px', fontSize: '10px', fontWeight: '800', letterSpacing: '1px', color: 'var(--text-muted)' }} className="glass-card">
             {date.toUpperCase()}
           </div>
@@ -68,6 +63,7 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh }) => {
         </div>
       ))}
 
+      {/* RESTORED LOAD MORE BUTTON */}
       <div style={{ textAlign: 'center', padding: '40px 0 100px 0' }}>
         <button onClick={handleLoadMore} disabled={loadingMore}
           className="glass-card" style={{ padding: '14px 40px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', color: 'inherit' }}>
