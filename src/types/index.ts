@@ -20,9 +20,8 @@ export interface CloudFile {
   mimeType: string;
   downloadStatus: DownloadStatus;
   downloadProgress: number;
-  thumbnail?: any;
   isVideo: boolean;
-  duration?: number; 
+  duration?: number;
   selected?: boolean;
 }
 
