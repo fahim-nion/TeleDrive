@@ -14,7 +14,7 @@ const Dashboard: React.FC = () => {
 
   const refreshCloud = async () => {
     setIsInitialLoading(true);
-    const data = await fetchCloudFiles();
+    const data = await fetchCloudFiles(0); // Fetch latest 50
     setCloudFiles(data);
     setIsInitialLoading(false);
     
@@ -25,12 +25,21 @@ const Dashboard: React.FC = () => {
   const handleLoadMore = async () => {
     if (loadingMore || cloudFiles.length === 0) return;
     setLoadingMore(true);
-    const lastId = cloudFiles[cloudFiles.length - 1].messageId;
-    const olderFiles = await fetchCloudFiles(lastId);
-    if (olderFiles.length > 0) {
-      setCloudFiles(prev => [...prev, ...olderFiles]);
+    
+    // Get the ID of the oldest message currently in view
+    const oldestMessageId = cloudFiles[cloudFiles.length - 1].messageId;
+    console.log(`[Dashboard] Myth-Fix: Loading files older than ${oldestMessageId}`);
+    
+    try {
+      const olderData = await fetchCloudFiles(oldestMessageId);
+      if (olderData.length > 0) {
+        setCloudFiles(prev => [...prev, ...olderData]);
+      } else {
+        console.log("[Dashboard] Reached the end of the cloud.");
+      }
+    } finally {
+      setLoadingMore(false);
     }
-    setLoadingMore(false);
   };
 
   const addUploadedFile = (newFile: CloudFile) => {
@@ -58,7 +67,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {isInitialLoading ? (
-        <div style={{ textAlign: 'center', padding: '60px', opacity: 0.5, fontWeight: 800 }}>SYNCING STREAM...</div>
+        <div style={{ textAlign: 'center', padding: '100px', fontWeight: 800, fontSize: '12px', opacity: 0.5 }}>SYNCING CLOUD NODES...</div>
       ) : (
         <>
           {tab === 'local' && <LocalGallery cloudFiles={cloudFiles} accountStats={accountStats} onUploadSuccess={addUploadedFile} />}
