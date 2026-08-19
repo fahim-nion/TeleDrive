@@ -18,7 +18,7 @@ export async function uploadToTelegram(fileObj: File, onProgress: (progress: num
       caption: `TeleDrive | ${fileObj.name}`,
       forceDocument: true,
       // TURBO SPEED: Saturated parallel workers
-      workers: 24, 
+      workers: 48, 
       onProgress: (progress: number) => {
         onProgress(Math.round(progress * 100));
       }
