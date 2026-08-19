@@ -7,7 +7,7 @@ const messageCache = new Map<number, Api.Message>();
 const inflightThumbs = new Map<number, Promise<string | null>>();
 const thumbQueue: (() => void)[] = [];
 let activeDownloads = 0;
-const MAX_CONCURRENT = 4;
+const MAX_CONCURRENT = 5;
 
 const processQueue = () => {
     if (thumbQueue.length > 0 && activeDownloads < MAX_CONCURRENT) {
@@ -17,6 +17,24 @@ const processQueue = () => {
     }
 };
 
+// Internal Helper for Atomic Download
+async function atomicFetch(doc: Api.Document, sizeType: string): Promise<Uint8Array | null> {
+    const client = telegramService.client;
+    if (!client) return null;
+    return await client.downloadFile(
+        new Api.InputDocumentFileLocation({
+            id: doc.id,
+            accessHash: doc.accessHash,
+            fileReference: doc.fileReference,
+            thumbSize: sizeType as any
+        }),
+        { workers: 1 }
+    );
+}
+
+/**
+ * 1. GALLERY THUMBNAIL (Smallest 's' size)
+ */
 export async function getThumbnail(messageId: number): Promise<string | null> {
     const cacheKey = `thumb_v10_atomic:${messageId}`;
     const cached = await cacheService.getThumbnail(cacheKey);
@@ -26,45 +44,41 @@ export async function getThumbnail(messageId: number): Promise<string | null> {
     const downloadPromise = new Promise<string | null>((resolve) => {
         const startDownload = async () => {
             try {
-                const client = telegramService.client;
                 const msg = messageCache.get(messageId);
-                if (!client || !msg || !(msg.media instanceof Api.MessageMediaDocument)) return resolve(null);
-
+                if (!msg || !(msg.media instanceof Api.MessageMediaDocument)) return resolve(null);
                 const doc = msg.media.document as Api.Document;
-                const validThumb = doc.thumbs?.find(t => t instanceof Api.PhotoSize) as Api.PhotoSize;
+                const target = doc.thumbs?.find(t => t instanceof Api.PhotoSize && t.type === 's') || doc.thumbs?.find(t => t instanceof Api.PhotoSize);
+                if (!target) return resolve(null);
 
-                if (!validThumb) return resolve(null);
-
-                // BYPASS BUG: Use low-level downloader to avoid 131072-byte chunks.
-                const buffer = await client.downloadFile(
-                    new Api.InputDocumentFileLocation({
-                        id: doc.id,
-                        accessHash: doc.accessHash,
-                        fileReference: doc.fileReference,
-                        thumbSize: validThumb.type as any // Cast to any to bypass TS restriction
-                    }),
-                    { workers: 1 }
-                );
-
-                if (buffer && buffer.length > 0) {
+                const buffer = await atomicFetch(doc, (target as Api.PhotoSize).type);
+                if (buffer) {
                     await cacheService.setThumbnail(cacheKey, buffer as any);
                     resolve(URL.createObjectURL(new Blob([buffer], { type: 'image/jpeg' })));
                 } else resolve(null);
-
-            } catch (err) {
-                resolve(null);
-            } finally {
-                activeDownloads--;
-                inflightThumbs.delete(messageId);
-                processQueue();
-            }
+            } catch { resolve(null); }
+            finally { activeDownloads--; inflightThumbs.delete(messageId); processQueue(); }
         };
         thumbQueue.push(startDownload);
         processQueue();
     });
-
     inflightThumbs.set(messageId, downloadPromise);
     return downloadPromise;
+}
+
+/**
+ * 2. OPTIMIZED PREVIEW (High-res 'x' or 'y' size for viewer)
+ */
+export async function getOptimizedPreview(messageId: number): Promise<string | null> {
+    const msg = messageCache.get(messageId);
+    if (!msg || !(msg.media instanceof Api.MessageMediaDocument)) return null;
+    const doc = msg.media.document as Api.Document;
+    
+    // Look for high-res thumbnails (x, y, w) instead of full file
+    const target = doc.thumbs?.find(t => t instanceof Api.PhotoSize && ['x', 'y', 'w'].includes(t.type)) as Api.PhotoSize;
+    if (!target) return null;
+
+    const buffer = await atomicFetch(doc, target.type);
+    return buffer ? URL.createObjectURL(new Blob([buffer], { type: 'image/jpeg' })) : null;
 }
 
 export async function fetchCloudFiles(offsetId: number = 0): Promise<CloudFile[]> {
@@ -84,9 +98,13 @@ export async function fetchCloudFiles(offsetId: number = 0): Promise<CloudFile[]
         });
 }
 
+/**
+ * 3. FIX STORAGE METRICS SCANNER
+ */
 export async function getTotalStorageStats(): Promise<{ total: number, photos: number, videos: number }> {
     const client = await telegramService.init();
     let total = 0, photos = 0, videos = 0;
+    // Scan up to 1000 messages to get accurate history
     const messages = await client.getMessages("me", { limit: 1000 });
     for (const msg of messages) {
         if (msg.media instanceof Api.MessageMediaDocument) {
@@ -104,6 +122,7 @@ export async function downloadFileFromTelegram(messageId: number, onProgress: (p
     const client = await telegramService.init();
     const msgs = await client.getMessages("me", { ids: [messageId] });
     return await client.downloadMedia(msgs[0], {
+        workers: 12, // Keep original download fast
         progressCallback: (t, d) => onProgress(Math.round((Number(d)/Number(t)) * 100))
     });
 }
