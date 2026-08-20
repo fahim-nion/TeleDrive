@@ -7,13 +7,20 @@ import { IconRefresh } from './Icons';
 
 interface Props {
   initialFiles: CloudFile[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
   onLoadMore: () => void;
   loadingMore: boolean;
 }
 
 const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh, onLoadMore, loadingMore }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncClick = async () => {
+    setIsSyncing(true);
+    await onRefresh();
+    setIsSyncing(false);
+  };
 
   const groups: Record<string, CloudFile[]> = {};
   initialFiles.forEach(f => {
@@ -26,8 +33,14 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh, onLoadMore, lo
     <div style={{ paddingBottom: '100px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Cloud Stream</h2>
-        <button onClick={onRefresh} className="glass-card" style={{ padding: '10px 16px', fontWeight: 'bold', display: 'flex', gap: '8px', alignItems: 'center', fontSize: '11px', cursor: 'pointer', color: '#fff' }}>
-          <IconRefresh size={14} /> SYNC NODES
+        <button 
+          onClick={handleSyncClick} 
+          disabled={isSyncing}
+          className="glass-card" 
+          style={{ padding: '10px 16px', fontWeight: '800', display: 'flex', gap: '8px', alignItems: 'center', fontSize: '11px', cursor: 'pointer', color: '#fff', opacity: isSyncing ? 0.5 : 1 }}
+        >
+          <IconRefresh size={14} className={isSyncing ? 'spin' : ''} /> 
+          {isSyncing ? 'SYNCING...' : 'SYNC NODES'}
         </button>
       </div>
 
@@ -44,7 +57,6 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh, onLoadMore, lo
         </div>
       ))}
 
-      {/* RE-IMPLEMENTED VISIBLE BUTTON */}
       <div style={{ textAlign: 'center', padding: '60px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
         <button 
           onClick={(e) => { e.preventDefault(); onLoadMore(); }} 
@@ -70,7 +82,7 @@ const CloudGallery: React.FC<Props> = ({ initialFiles, onRefresh, onLoadMore, lo
         <MediaViewer 
           files={initialFiles} currentIndex={selectedIndex} 
           onClose={() => setSelectedIndex(null)} onIndexChange={setSelectedIndex}
-          onDelete={async (id: number) => { await deleteFileFromTelegram(id); onRefresh(); setSelectedIndex(null); }}
+          onDelete={async (id: number) => { await deleteFileFromTelegram(id); await onRefresh(); setSelectedIndex(null); }}
           onDownload={async (f: any) => {
             const buf = await downloadFileFromTelegram(f.messageId, () => {});
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: f.mimeType })); a.download = f.name; a.click();

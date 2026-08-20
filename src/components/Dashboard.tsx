@@ -14,14 +14,16 @@ const Dashboard: React.FC = () => {
 
   const refreshCloud = async () => {
     try {
+      // Sync newest 60 files
       const data = await fetchCloudFiles(0);
       setCloudFiles(data);
-      setIsInitialLoading(false); // UI loads immediately with files
+      setIsInitialLoading(false);
       
-      // Calculate stats in background so it doesn't block the UI
+      // Update full account metrics
       const stats = await getTotalStorageStats();
       setAccountStats(stats);
     } catch (e) {
+      console.error("Sync failed", e);
       setIsInitialLoading(false);
     }
   };
