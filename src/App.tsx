@@ -37,29 +37,42 @@ const App: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh' }}>
+      {/* 1. Welcome Toast */}
       {showWelcome && user && (
         <div className="animate-toast" style={{ position: 'fixed', top: '20px', left: '50%', zIndex: 10001, background: 'var(--primary)', color: 'white', padding: '12px 32px', borderRadius: '100px', fontWeight: 800, boxShadow: '0 10px 30px rgba(99, 102, 241, 0.4)' }}>
           WELCOME BACK, {user.firstName.toUpperCase()}!
         </div>
       )}
 
+      {/* FIXED LOGOUT POPUP */}
       {showLogoutConfirm && (
-        <div className="modal-overlay">
-          <div className="glass-card animate-fade" style={{ padding: '40px', width: '320px', textAlign: 'center', borderRadius: '32px' }}>
+        <div className="modal-overlay animate-fade">
+          <div className="glass-card" style={{ padding: '40px', textAlign: 'center', borderRadius: '32px' }}>
             <div style={{ fontSize: '40px', marginBottom: '16px' }}>🚪</div>
-            <h3 style={{ margin: '0 0 8px 0' }}>Log out?</h3>
+            <h3 style={{ margin: '0 0 8px 0', color: 'var(--text)' }}>Log out?</h3>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>Session will be cleared.</p>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setShowLogoutConfirm(false)} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontWeight: 800, cursor: 'pointer' }}>CANCEL</button>
-              <button onClick={() => telegramService.logout()} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#EF4444', color: 'white', fontWeight: 800, cursor: 'pointer' }}>LOGOUT</button>
+              <button 
+                onClick={() => setShowLogoutConfirm(false)} 
+                style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontWeight: 800, cursor: 'pointer' }}
+              >
+                CANCEL
+              </button>
+              <button 
+                onClick={() => telegramService.logout()} 
+                style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#EF4444', color: 'white', fontWeight: 800, cursor: 'pointer' }}
+              >
+                LOGOUT
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ... (REMAINDER OF THE FILE IS UNTOUCHED) ... */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 1000, padding: '12px 5%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="logo-text">TeleDrive</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button onClick={toggleTheme} style={{ background: 'var(--accent)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
