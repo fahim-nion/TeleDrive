@@ -5,43 +5,60 @@ import { IconDownload, IconTrash, IconChevronLeft, IconChevronRight, IconVideo, 
 const MediaViewer: React.FC<any> = ({ files, currentIndex, onClose, onIndexChange, onDelete, onDownload }) => {
   const f = files[currentIndex];
   const [url, setUrl] = useState<string | null>(null);
+  const [isOriginal, setIsOriginal] = useState(false); // Track if we are showing the perfect quality
   const [loading, setLoading] = useState(true);
   const [thumbs, setThumbs] = useState<Record<number, string>>({});
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const touchStart = useRef(0);
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      setLoading(true); 
-      setUrl(null); 
-      setZoom(1); 
-      setOffset({ x: 0, y: 0 });
+    const loadSequence = async () => {
+      setLoading(true); setUrl(null); setZoom(1); setOffset({ x: 0, y: 0 }); setIsOriginal(false);
       
-      // 1. Try to fetch the high-quality preview (instant loading)
+      // STEP 1: Load High-Res Preview (Fast & Clear)
       const previewUrl = await getOptimizedPreview(f.messageId);
       
       if (active) {
         if (previewUrl && !f.isVideo) {
           setUrl(previewUrl);
           setLoading(false);
+
+          // STEP 2: Background Sharpening (Perfect Quality)
+          // Wait 400ms to ensure the user isn't just swiping through
+          setTimeout(async () => {
+            if (!active || f.isVideo) return;
+            try {
+              const buf = await downloadFileFromTelegram(f.messageId, () => {});
+              if (active && buf) {
+                const originalUrl = URL.createObjectURL(new Blob([buf], { type: f.mimeType }));
+                setUrl(originalUrl);
+                setIsOriginal(true);
+                // Clean up the preview URL memory
+                if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+              }
+            } catch (e) { console.warn("Background sharpening failed", e); }
+          }, 400);
+
         } else {
-          // Fallback to original ONLY if it's a video or no preview exists
+          // Fallback for videos or if no preview exists
           const buf = await downloadFileFromTelegram(f.messageId, () => {});
-          if (active) { 
-            setUrl(URL.createObjectURL(new Blob([buf], { type: f.mimeType }))); 
-            setLoading(false); 
+          if (active && buf) {
+            setUrl(URL.createObjectURL(new Blob([buf], { type: f.mimeType })));
+            setLoading(false);
+            setIsOriginal(true);
           }
         }
       }
     };
-    load();
+    loadSequence();
     return () => { active = false; if(url) URL.revokeObjectURL(url); };
   }, [currentIndex]);
 
-  // Load adjacent thumbnails for carousel
+  // Carousel logic remains same
   useEffect(() => {
     const range = 5;
     files.forEach(async (file: any, index: number) => {
@@ -52,11 +69,29 @@ const MediaViewer: React.FC<any> = ({ files, currentIndex, onClose, onIndexChang
     });
   }, [currentIndex, files]);
 
+  const handleTouchStart = (e: any) => touchStart.current = e.touches[0].clientX;
+  const handleTouchEnd = (e: any) => {
+    const diff = touchStart.current - e.changedTouches[0].clientX;
+    if (diff > 70 && currentIndex < files.length - 1) onIndexChange(currentIndex + 1);
+    if (diff < -70 && currentIndex > 0) onIndexChange(currentIndex - 1);
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 3000, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{ padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.6)', zIndex: 3010 }}>
         <button onClick={onClose} style={{ color: 'white', background: 'rgba(255,255,255,0.1)', border: 'none', padding: '8px 16px', borderRadius: '100px', fontWeight: '800', cursor: 'pointer', fontSize: '10px' }}>CLOSE</button>
+        
+        {/* Quality Indicator */}
+        {!loading && !f.isVideo && (
+            <div style={{ 
+                background: isOriginal ? 'var(--success)' : 'var(--primary)', 
+                color: 'white', fontSize: '9px', fontWeight: 900, padding: '2px 8px', borderRadius: '4px', letterSpacing: '0.5px' 
+            }}>
+              {isOriginal ? 'RAW QUALITY' : 'SHARPENING...'}
+            </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {!f.isVideo && <input className="hide-mobile" type="range" min="1" max="4" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} style={{ width: '60px' }} />}
           <button onClick={() => onDownload(f)} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer' }}><IconDownload size={14} /></button>
@@ -64,31 +99,33 @@ const MediaViewer: React.FC<any> = ({ files, currentIndex, onClose, onIndexChang
         </div>
       </div>
 
-      {/* Main Viewport */}
       <div 
-        style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+        style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none' }}
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
         onMouseDown={(e) => { if(zoom > 1) { setIsDragging(true); dragStart.current = { x: e.clientX - offset.x, y: e.clientY - offset.y }; }}}
         onMouseMove={(e) => { if(isDragging) setOffset({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); }}
         onMouseUp={() => setIsDragging(false)}
       >
         <button onClick={() => onIndexChange(currentIndex - 1)} disabled={currentIndex === 0} style={{ position: 'fixed', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.05)', color: 'white', border: 'none', width: '40px', height: '60px', borderRadius: '10px', zIndex: 3020, opacity: currentIndex === 0 ? 0 : 1, cursor: 'pointer' }}><IconChevronLeft size={20} /></button>
         
-        <div style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transition: isDragging ? 'none' : 'transform 0.1s', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transition: isDragging ? 'none' : 'transform 0.15s ease-out', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {loading ? (
-             <div style={{ textAlign: 'center' }}>
-                {/* Instant Blurred Background if available */}
-                <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '11px', letterSpacing: '1px' }}>DECRYPTING PREVIEW...</div>
-             </div>
+             <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '11px', letterSpacing: '1px' }}>DECRYPTING...</div>
           ) : (
             f.isVideo ? <video src={url!} controls playsInline style={{ maxWidth: '100%', maxHeight: '100%' }} autoPlay /> :
-            <img src={url!} style={{ maxWidth: '100%', maxHeight: '100%', pointerEvents: 'none', objectFit: 'contain' }} />
+            <img 
+                src={url!} 
+                style={{ 
+                    maxWidth: '100%', maxHeight: '100%', pointerEvents: 'none', objectFit: 'contain',
+                    imageRendering: isOriginal ? 'auto' : 'high-quality'
+                }} 
+            />
           )}
         </div>
 
         <button onClick={() => onIndexChange(currentIndex + 1)} disabled={currentIndex === files.length - 1} style={{ position: 'fixed', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.05)', color: 'white', border: 'none', width: '40px', height: '60px', borderRadius: '10px', zIndex: 3020, opacity: currentIndex === files.length - 1 ? 0 : 1, cursor: 'pointer' }}><IconChevronRight size={20} /></button>
       </div>
 
-      {/* Carousel */}
       <div style={{ padding: '10px', background: 'rgba(0,0,0,0.8)', display: 'flex', gap: '6px', justifyContent: 'center', overflowX: 'auto', zIndex: 3010 }}>
         {files.map((thumb: any, i: number) => (
           <div key={thumb.messageId} onClick={() => onIndexChange(i)} style={{ minWidth: '36px', height: '36px', borderRadius: '8px', overflow: 'hidden', border: i === currentIndex ? '2px solid var(--primary)' : '2px solid transparent', opacity: i === currentIndex ? 1 : 0.3, cursor: 'pointer' }}>

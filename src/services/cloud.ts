@@ -141,8 +141,10 @@ export async function getOptimizedPreview(messageId: number): Promise<string | n
         const doc = (msg.media as any).document as Api.Document;
         if (!doc) return null;
 
-        // Find the best preview size (y = 1280px, w = 2560px, m = 320px)
-        const target = doc.thumbs?.find(t => t instanceof Api.PhotoSize && ['y', 'w', 'x'].includes(t.type)) 
+        // QUALITY UPGRADE: Prioritize 'w' (2560px) for Retina displays, then 'y' (1280px)
+        const target = doc.thumbs?.find(t => t instanceof Api.PhotoSize && t.type === 'w')
+                    || doc.thumbs?.find(t => t instanceof Api.PhotoSize && t.type === 'y')
+                    || doc.thumbs?.find(t => t instanceof Api.PhotoSize && t.type === 'x')
                     || doc.thumbs?.find(t => t instanceof Api.PhotoSize && t.type === 'm');
 
         if (!target) return null;
@@ -150,7 +152,8 @@ export async function getOptimizedPreview(messageId: number): Promise<string | n
         const client = telegramService.client;
         if (!client) return null;
 
-        // Atomic fetch for the preview slice
+        console.log(`[Viewer HD] Fetching high-res preview: type=${(target as any).type}`);
+
         const buffer = await client.downloadFile(
             new Api.InputDocumentFileLocation({
                 id: doc.id,
@@ -163,7 +166,7 @@ export async function getOptimizedPreview(messageId: number): Promise<string | n
 
         return buffer ? URL.createObjectURL(new Blob([buffer as any], { type: 'image/jpeg' })) : null;
     } catch (e) {
-        console.error("Preview fetch failed", e);
+        console.error("HD Preview fetch failed", e);
         return null;
     }
 }
