@@ -13,33 +13,28 @@ const Dashboard: React.FC = () => {
   const [accountStats, setAccountStats] = useState({ total: 0, photos: 0, videos: 0 });
 
   const refreshCloud = async () => {
-    setIsInitialLoading(true);
-    const data = await fetchCloudFiles(0); // Fetch latest 50
-    setCloudFiles(data);
-    setIsInitialLoading(false);
-    
-    const stats = await getTotalStorageStats();
-    setAccountStats(stats);
+    try {
+      const data = await fetchCloudFiles(0);
+      setCloudFiles(data);
+      setIsInitialLoading(false); // UI loads immediately with files
+      
+      // Calculate stats in background so it doesn't block the UI
+      const stats = await getTotalStorageStats();
+      setAccountStats(stats);
+    } catch (e) {
+      setIsInitialLoading(false);
+    }
   };
 
   const handleLoadMore = async () => {
     if (loadingMore || cloudFiles.length === 0) return;
     setLoadingMore(true);
-    
-    // Get the ID of the oldest message currently in view
     const oldestMessageId = cloudFiles[cloudFiles.length - 1].messageId;
-    console.log(`[Dashboard] Myth-Fix: Loading files older than ${oldestMessageId}`);
-    
-    try {
-      const olderData = await fetchCloudFiles(oldestMessageId);
-      if (olderData.length > 0) {
-        setCloudFiles(prev => [...prev, ...olderData]);
-      } else {
-        console.log("[Dashboard] Reached the end of the cloud.");
-      }
-    } finally {
-      setLoadingMore(false);
+    const olderData = await fetchCloudFiles(oldestMessageId);
+    if (olderData.length > 0) {
+      setCloudFiles(prev => [...prev, ...olderData]);
     }
+    setLoadingMore(false);
   };
 
   const addUploadedFile = (newFile: CloudFile) => {

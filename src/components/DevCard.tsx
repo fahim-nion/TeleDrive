@@ -15,20 +15,20 @@ const DevCard: React.FC = () => {
         <h1 style={{ margin: '0 0 12px 0', fontSize: '36px', fontWeight: 800, letterSpacing: '-1.5px' }}>Fahim Morshed</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginBottom: '40px', lineHeight: 1.6, fontWeight: 500 }}>
           Lead Engineer & Architect of TeleDrive.<br/>
-          Pushing the boundaries of decentralized storage.
+          Pushing the boundaries of decentralized storage. Enjoy your free storage.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-          <a href="https://github.com" target="_blank" className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', textDecoration: 'none', color: 'inherit', fontWeight: '800', fontSize: '13px', background: 'var(--surface)' }}>
+          <a href="https://github.com/fahim-nion" target="_blank" className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', textDecoration: 'none', color: 'inherit', fontWeight: '800', fontSize: '13px', background: 'var(--surface)' }}>
             <IconGithub size={18} /> GITHUB
           </a>
-          <a href="https://x.com" target="_blank" className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', textDecoration: 'none', color: 'inherit', fontWeight: '800', fontSize: '13px', background: 'var(--surface)' }}>
+          <a href="https://x.com/FahimM0rshed" target="_blank" className="card" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', textDecoration: 'none', color: 'inherit', fontWeight: '800', fontSize: '13px', background: 'var(--surface)' }}>
             <IconX size={18} /> TWITTER
           </a>
         </div>
 
-        <div style={{ marginTop: '60px', paddingTop: '32px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '1px' }}>
-          CORE NODE v1.0.4 • POWERED BY TELEGRAM MTPROTO
+        <div style={{ marginTop: '60px', paddingTop: '32px', borderTop: '1px solid var(--border)', fontSize: '8px', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '1px' }}>
+           • THIS PROJECT WAS MADE FOR MY WIFE ❤️ •
         </div>
       </div>
     </div>
