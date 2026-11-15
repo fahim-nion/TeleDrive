@@ -19,7 +19,7 @@
   --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
   --surface: #FFFFFF;
   --surface-secondary: #F1F5F9;
-  --surface-glass: rgba(255, 255, 255, 0.75);
+  --surface-glass: rgba(255, 255, 255, 0.85);
 
   --text: #0F172A;
   --text-secondary: #334155;
@@ -31,9 +31,9 @@
   --warning: #F59E0B;
   --error: #EF4444;
 
-  --radius: 20px;
+  --radius: 18px;
   --radius-sm: 12px;
-  --radius-lg: 28px;
+  --radius-lg: 24px;
   --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.06);
@@ -60,7 +60,7 @@
   --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.2) 0%, transparent 60%);
   --surface: #121824;
   --surface-secondary: #1A2232;
-  --surface-glass: rgba(18, 24, 36, 0.8);
+  --surface-glass: rgba(18, 24, 36, 0.88);
 
   --text: #F8FAFC;
   --text-secondary: #CBD5E1;
@@ -75,6 +75,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -102,8 +103,8 @@ button, input, select {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -112,13 +113,10 @@ button, input, select {
   background: var(--border);
   border-radius: 100px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
 
 .logo-text {
   font-weight: 800;
-  font-size: 22px;
+  font-size: 20px;
   color: var(--primary);
   letter-spacing: -0.5px;
   display: flex;
@@ -135,10 +133,6 @@ button, input, select {
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.glass-card:hover {
-  border-color: rgba(99, 102, 241, 0.2);
 }
 
 .card {
@@ -159,20 +153,34 @@ button, input, select {
 .metric-grid {
   display: grid;
   grid-template-columns: 2.2fr 1fr 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 14px;
+  margin-bottom: 28px;
 }
 
 @media (max-width: 1024px) {
   .metric-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+  .metric-hero-card {
+    grid-column: span 2 !important;
   }
 }
 
 @media (max-width: 640px) {
   .metric-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .metric-hero-card {
+    grid-column: span 2 !important;
+    padding: 20px 16px !important;
+  }
+  .metric-hero-card .hero-val {
+    font-size: 32px !important;
+  }
+  .metric-stat-card {
+    padding: 12px 14px !important;
   }
 }
 
@@ -180,10 +188,10 @@ button, input, select {
   background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #7C3AED 100%);
   color: #FFFFFF;
   border-radius: var(--radius-lg);
-  padding: 28px;
+  padding: 26px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 18px 36px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 16px 36px rgba(99, 102, 241, 0.3);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -195,17 +203,17 @@ button, input, select {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   transition: transform 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
 }
 
 .metric-stat-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--primary);
   box-shadow: var(--shadow-md);
 }
@@ -227,17 +235,28 @@ button, input, select {
   position: relative;
 }
 
-/* Gallery Grid */
+/* Gallery Grid: Desktop & Mobile */
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
 }
 
 @media (max-width: 768px) {
   .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .gallery-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+  .cloud-item {
+    padding: 3px !important;
+    border-radius: 10px !important;
   }
 }
 
@@ -245,14 +264,14 @@ button, input, select {
 .file-list-view {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .file-list-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
+  padding: 10px 14px;
   border-radius: var(--radius-sm);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -260,17 +279,17 @@ button, input, select {
   cursor: pointer;
 }
 
-.file-list-item:hover {
+.file-list-item:hover,
+.file-list-item.selected {
   background: var(--accent);
   border-color: var(--primary);
-  transform: translateX(3px);
 }
 
 /* Dropzone */
 .upload-dropzone {
   border: 2px dashed var(--border);
   border-radius: var(--radius-lg);
-  padding: 40px 24px;
+  padding: 36px 20px;
   text-align: center;
   background: var(--surface-glass);
   transition: all 0.25s ease;
@@ -288,24 +307,36 @@ button, input, select {
   box-shadow: var(--shadow-glow);
 }
 
-/* Floating Action Bar for Multi-Select */
+/* Floating Action Bar for Multi-Select (Responsive Mobile Bottom Bar) */
 .floating-action-bar {
   position: fixed;
-  bottom: 24px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2500;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 18px;
   border-radius: 100px;
-  background: var(--surface);
+  background: var(--surface-glass);
   border: 1px solid var(--border);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 520px;
+  width: calc(100% - 24px);
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .floating-action-bar {
+    padding: 8px 12px;
+    bottom: 12px;
+    gap: 6px;
+  }
 }
 
 /* Animations */
@@ -343,9 +374,9 @@ button, input, select {
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
 }
 
 /* Modal Overlay */
@@ -358,13 +389,13 @@ button, input, select {
   width: 100vw;
   height: 100vh;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
   animation: fadeIn 0.2s ease;
 }
 
@@ -373,12 +404,13 @@ button, input, select {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-  max-width: 480px;
+  max-width: 440px;
   width: 100%;
-  padding: 32px;
+  padding: 28px;
   position: relative;
   z-index: 10000;
   animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 @keyframes scaleIn {
@@ -404,7 +436,7 @@ button, input, select {
     opacity: 0;
   }
   to {
-    top: 24px;
+    top: 18px;
     opacity: 1;
   }
 }
@@ -413,7 +445,7 @@ button, input, select {
 .login-grid {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
-  gap: 48px;
+  gap: 40px;
   align-items: center;
   width: 100%;
 }
@@ -421,39 +453,33 @@ button, input, select {
 @media (max-width: 900px) {
   .login-grid {
     grid-template-columns: 1fr;
-    gap: 32px;
-    margin-top: 20px !important;
+    gap: 24px;
+    margin: 20px 0 !important;
   }
 
   .login-title {
-    font-size: 38px !important;
+    font-size: 32px !important;
     text-align: center;
   }
 }
 
 .remove-x {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 4px;
+  right: 4px;
   background: rgba(239, 68, 68, 0.9);
   color: white;
   border: none;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.remove-x:hover {
-  transform: scale(1.1);
-  background: #EF4444;
 }
 
 .tabs-scroll-container {
@@ -461,6 +487,7 @@ button, input, select {
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 .tabs-scroll-container::-webkit-scrollbar {
   display: none;
@@ -469,7 +496,7 @@ button, input, select {
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: 100px;
   font-size: 10px;
   font-weight: 800;
@@ -486,14 +513,14 @@ button, input, select {
 /* Quick Action button on hover */
 .cloud-item-hover-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   display: flex;
   gap: 4px;
   opacity: 0;
   transform: translateY(-4px);
   transition: all 0.2s ease;
-  z-index: 5;
+  z-index: 6;
 }
 
 .cloud-item:hover .cloud-item-hover-actions {
@@ -502,9 +529,9 @@ button, input, select {
 }
 
 .action-icon-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   background: rgba(0, 0, 0, 0.7);
   color: white;
   border: none;
@@ -517,9 +544,52 @@ button, input, select {
 
 .action-icon-btn:hover {
   background: var(--primary);
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .action-icon-btn.delete:hover {
   background: var(--error);
+}
+
+/* Item Selection Checkbox */
+.item-select-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 7;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  touch-action: manipulation;
+}
+
+.cloud-item:hover .item-select-checkbox,
+.item-select-checkbox.visible,
+.cloud-item.selected .item-select-checkbox {
+  opacity: 1;
+}
+
+/* Global Mobile Media Queries */
+@media (max-width: 640px) {
+  nav {
+    padding: 10px 14px !important;
+  }
+  main {
+    padding: 16px 10px !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  .hide-mobile-extra {
+    display: none !important;
+  }
+  .cloud-item-hover-actions {
+    display: none !important; /* Touch devices use direct tap */
+  }
+  .item-select-checkbox {
+    opacity: 0.6; /* Visible on mobile so users know they can tap to select */
+  }
+  .item-select-checkbox.visible,
+  .cloud-item.selected .item-select-checkbox {
+    opacity: 1;
+  }
 }

@@ -84,7 +84,7 @@ const StorageMetrics: React.FC<Props> = ({
         <div className="metric-hero-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 2 }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', opacity: 0.85 }}>
                   TOTAL STORAGE VOLUME
                 </span>
@@ -104,10 +104,10 @@ const StorageMetrics: React.FC<Props> = ({
               </div>
 
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                <span style={{ fontSize: '44px', fontWeight: 800, lineHeight: 1, letterSpacing: '-1px' }}>
+                <span className="hero-val" style={{ fontSize: '42px', fontWeight: 800, lineHeight: 1, letterSpacing: '-1px' }}>
                   {total.val}
                 </span>
-                <span style={{ fontSize: '20px', fontWeight: 700, opacity: 0.85 }}>
+                <span style={{ fontSize: '18px', fontWeight: 700, opacity: 0.85 }}>
                   {total.unit}
                 </span>
               </div>

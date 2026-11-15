@@ -140,3 +140,15 @@ TeleDrive is a Web Application using Telegram as a storage backend.
 - [x] **Universal Media Viewer:** Added keyboard navigation (`ArrowLeft`, `ArrowRight`, `Esc`), metadata drawer (ℹ️), custom audio player, document cards, and real-time download progress bar.
 - [x] **Bundle Optimization:** Dynamically imported `heic2any`, reducing main bundle size by ~1.35 MB.
 - [x] **GitHub & Release Ready:** Added `.env.example` and full documentation `README.md`.
+
+### Phase 12 (Mobile Responsiveness & Photo Selection Download Engine)
+- [x] **Mobile Responsiveness Overhaul:**
+  - Implemented 3-column high-density layout on mobile devices (`repeat(3, 1fr)` with 6px gap), matching native iOS Photos and Google Photos.
+  - Scaled hero storage metric values (`hero-val` 32px on mobile) and converted the 4 category cards to a clean 2x2 grid.
+  - Refactored header and navigation for narrow screens (compact user avatar button, safe padding).
+  - Ensured floating action bar fits smoothly within mobile viewports with zero horizontal overflow.
+- [x] **Photo Selection & Batch Download System:**
+  - Added dedicated "SELECT PHOTOS" button that immediately filters to photos and enters selection mode.
+  - Added visible, touch-accessible selection checkboxes on all cards.
+  - Integrated `jszip` for batch downloading multiple photos or files into a single, clean ZIP package (`TeleDrive_Photos_X_items.zip`).
+  - Added full live download progress modal with percentage and file progress during multi-file downloads.

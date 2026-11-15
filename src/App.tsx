@@ -360,7 +360,7 @@ const App: React.FC = () => {
                   {user.firstName[0]}
                 </div>
               )}
-              <div style={{ textAlign: 'left' }}>
+              <div className="hide-mobile-extra" style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', lineHeight: 1.1, color: 'var(--text)' }}>
                   {user.firstName}
                 </div>

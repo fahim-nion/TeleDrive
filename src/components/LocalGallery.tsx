@@ -312,19 +312,21 @@ const LocalGallery: React.FC<Props> = ({
               <span>{files.length} {files.length === 1 ? 'file' : 'files'} in queue</span> • <span>{formattedBatchSize.val} {formattedBatchSize.unit} total</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 style={{
-                  padding: '12px 24px',
+                  flex: '1 1 130px',
+                  padding: '12px 18px',
                   borderRadius: '14px',
                   border: '1px solid var(--border)',
                   background: 'var(--surface)',
                   color: 'var(--text)',
                   fontWeight: 800,
                   fontSize: '11px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  textAlign: 'center'
                 }}
               >
                 + ADD MORE FILES
@@ -334,7 +336,8 @@ const LocalGallery: React.FC<Props> = ({
                 onClick={startUpload}
                 disabled={isUploading || pendingCount === 0}
                 style={{
-                  padding: '12px 32px',
+                  flex: '1 1 160px',
+                  padding: '12px 24px',
                   borderRadius: '14px',
                   border: 'none',
                   background: 'var(--primary)',
@@ -345,6 +348,7 @@ const LocalGallery: React.FC<Props> = ({
                   opacity: (isUploading || pendingCount === 0) ? 0.6 : 1,
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '8px',
                   boxShadow: '0 8px 20px var(--primary-glow)'
                 }}

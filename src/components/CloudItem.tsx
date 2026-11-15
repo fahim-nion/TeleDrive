@@ -18,7 +18,7 @@ interface Props {
   file: CloudFile;
   isSelected?: boolean;
   isSelectMode?: boolean;
-  onToggleSelect?: (e: React.MouseEvent) => void;
+  onToggleSelect?: (e: React.MouseEvent | React.TouchEvent) => void;
   onClick: () => void;
   onQuickDownload?: (e: React.MouseEvent) => void;
   onQuickDelete?: (e: React.MouseEvent) => void;
@@ -56,7 +56,7 @@ const CloudItem: React.FC<Props> = ({
         load();
         observer.disconnect();
       }
-    }, { rootMargin: '250px' });
+    }, { rootMargin: '300px' });
 
     if (containerRef.current) observer.observe(containerRef.current);
 
@@ -76,57 +76,71 @@ const CloudItem: React.FC<Props> = ({
   const renderIcon = () => {
     switch (file.category) {
       case 'video':
-        return <IconVideo size={32} color="var(--accent-video)" />;
+        return <IconVideo size={28} color="var(--accent-video)" />;
       case 'audio':
-        return <IconMusic size={32} color="var(--accent-audio)" />;
+        return <IconMusic size={28} color="var(--accent-audio)" />;
       case 'document':
-        return <IconFileText size={32} color="var(--accent-doc)" />;
+        return <IconFileText size={28} color="var(--accent-doc)" />;
       case 'archive':
-        return <IconArchive size={32} color="var(--accent-other)" />;
+        return <IconArchive size={28} color="var(--accent-other)" />;
       default:
-        return <IconImage size={32} color="var(--primary)" />;
+        return <IconImage size={28} color="var(--primary)" />;
+    }
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isSelectMode) {
+      e.preventDefault();
+      onToggleSelect?.(e);
+    } else {
+      onClick();
     }
   };
 
   return (
     <div 
       ref={containerRef} 
-      className="card cloud-item" 
+      className={`card cloud-item ${isSelected ? 'selected' : ''}`} 
       style={{ 
-        padding: '6px', 
+        padding: '5px', 
         cursor: 'pointer', 
         position: 'relative',
-        borderRadius: '16px',
+        borderRadius: '14px',
         border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
-        transform: isSelected ? 'scale(0.98)' : 'none',
+        transform: isSelected ? 'scale(0.97)' : 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        touchAction: 'manipulation'
       }} 
-      onClick={isSelectMode && onToggleSelect ? onToggleSelect : onClick}
+      onClick={handleCardClick}
     >
-      {/* Checkbox (visible in select mode or on hover) */}
-      {(isSelectMode || isSelected) && (
-        <div 
-          onClick={(e) => { e.stopPropagation(); onToggleSelect?.(e); }}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            zIndex: 10,
-            width: '22px',
-            height: '22px',
-            borderRadius: '6px',
-            background: isSelected ? 'var(--primary)' : 'rgba(0, 0, 0, 0.5)',
-            border: '2px solid #FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          }}
-        >
+      {/* Selection Checkbox Pill (Always touch-accessible in top-left) */}
+      <div 
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          onToggleSelect?.(e); 
+        }}
+        className={`item-select-checkbox ${isSelectMode || isSelected ? 'visible' : ''}`}
+        title={isSelected ? "Deselect item" : "Select item"}
+      >
+        <div style={{
+          width: '24px',
+          height: '24px',
+          borderRadius: '7px',
+          background: isSelected ? 'var(--primary)' : 'rgba(0, 0, 0, 0.45)',
+          border: isSelected ? '2px solid #FFFFFF' : '1.5px solid rgba(255, 255, 255, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(4px)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+          transition: 'all 0.15s ease',
+        }}>
           {isSelected && <IconCheck size={14} color="#FFFFFF" />}
         </div>
-      )}
+      </div>
 
-      {/* Quick Action buttons on hover */}
+      {/* Desktop Quick Actions on hover (hidden on touch/mobile) */}
       {!isSelectMode && (
         <div className="cloud-item-hover-actions">
           {onQuickDownload && (
@@ -135,7 +149,7 @@ const CloudItem: React.FC<Props> = ({
               title="Download file" 
               onClick={(e) => { e.stopPropagation(); onQuickDownload(e); }}
             >
-              <IconDownload size={14} />
+              <IconDownload size={13} />
             </button>
           )}
           <button 
@@ -143,7 +157,7 @@ const CloudItem: React.FC<Props> = ({
             title="Preview" 
             onClick={(e) => { e.stopPropagation(); onClick(); }}
           >
-            <IconMaximize size={14} />
+            <IconMaximize size={13} />
           </button>
           {onQuickDelete && (
             <button 
@@ -151,23 +165,24 @@ const CloudItem: React.FC<Props> = ({
               title="Delete from Telegram" 
               onClick={(e) => { e.stopPropagation(); onQuickDelete(e); }}
             >
-              <IconTrash size={14} />
+              <IconTrash size={13} />
             </button>
           )}
         </div>
       )}
 
-      {/* Media / Thumbnail Box */}
+      {/* Media / Thumbnail Square */}
       <div 
         style={{ 
           aspectRatio: '1/1', 
           background: 'var(--surface-secondary)', 
-          borderRadius: '12px', 
+          borderRadius: '10px', 
           overflow: 'hidden', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          position: 'relative' 
+          position: 'relative',
+          width: '100%'
         }}
       >
         {thumbUrl ? (
@@ -179,14 +194,15 @@ const CloudItem: React.FC<Props> = ({
               width: '100%', 
               height: '100%', 
               objectFit: 'cover',
-              transition: 'transform 0.3s ease',
+              transition: 'transform 0.25s ease',
+              display: 'block'
             }} 
           />
         ) : (
-          <div style={{ opacity: 0.7, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+          <div style={{ opacity: 0.75, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
             {renderIcon()}
             {extension && (
-              <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
+              <span style={{ fontSize: '8px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
                 {extension}
               </span>
             )}
@@ -197,13 +213,13 @@ const CloudItem: React.FC<Props> = ({
         {file.isVideo && durationText && (
           <div style={{
             position: 'absolute',
-            bottom: '6px',
-            right: '6px',
+            bottom: '4px',
+            right: '4px',
             background: 'rgba(0, 0, 0, 0.75)',
             color: 'white',
-            fontSize: '9px',
+            fontSize: '8px',
             fontWeight: 800,
-            padding: '2px 6px',
+            padding: '2px 5px',
             borderRadius: '4px',
             backdropFilter: 'blur(4px)'
           }}>
@@ -211,17 +227,17 @@ const CloudItem: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Category Pill for non-images */}
+        {/* Category Pill for non-images when no thumb exists */}
         {file.category !== 'image' && !thumbUrl && (
           <div style={{
             position: 'absolute',
-            top: '6px',
-            left: '6px',
+            top: '4px',
+            right: '4px',
             background: 'var(--surface)',
             color: 'var(--text)',
-            fontSize: '8px',
+            fontSize: '7px',
             fontWeight: 800,
-            padding: '2px 5px',
+            padding: '1px 4px',
             borderRadius: '4px',
             border: '1px solid var(--border)',
           }}>
@@ -231,15 +247,16 @@ const CloudItem: React.FC<Props> = ({
       </div>
 
       {/* Meta Footer */}
-      <div style={{ padding: '8px 4px 2px 4px' }}>
+      <div style={{ padding: '6px 2px 2px 2px' }}>
         <div 
           style={{ 
-            fontSize: '11px', 
+            fontSize: '10px', 
             fontWeight: 700, 
             whiteSpace: 'nowrap', 
             overflow: 'hidden', 
             textOverflow: 'ellipsis', 
             color: 'var(--text)',
+            lineHeight: 1.2,
             marginBottom: '2px'
           }}
           title={file.name}
@@ -256,7 +273,9 @@ const CloudItem: React.FC<Props> = ({
           fontWeight: 700 
         }}>
           <span>{size.val} {size.unit}</span>
-          <span>{new Date(file.date * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+          <span className="hide-mobile-extra">
+            {new Date(file.date * 1000).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+          </span>
         </div>
       </div>
     </div>
