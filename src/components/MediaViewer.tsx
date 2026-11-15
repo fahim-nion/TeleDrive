@@ -11,7 +11,6 @@ import {
   IconFileText,
   IconArchive,
   IconInfo,
-  IconCheck,
   IconX 
 } from './Icons';
 import { CloudFile } from '../types';
@@ -34,7 +33,8 @@ const MediaViewer: React.FC<Props> = ({
   onDelete, 
   onDownload 
 }) => {
-  const f = files[currentIndex];
+  const f = files && files.length > 0 && currentIndex >= 0 && currentIndex < files.length ? files[currentIndex] : null;
+  if (!f) return null;
   const [url, setUrl] = useState<string | null>(null);
   const [isOriginal, setIsOriginal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -509,7 +509,7 @@ const MediaViewer: React.FC<Props> = ({
                 pointerEvents: 'none', 
                 objectFit: 'contain',
                 borderRadius: '8px',
-                imageRendering: isOriginal ? 'auto' : 'high-quality'
+                imageRendering: 'auto'
               }} 
             />
           )}

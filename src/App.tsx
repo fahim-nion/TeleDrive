@@ -3,14 +3,12 @@ import { telegramService } from './services/telegram';
 import { TeleUser } from './types';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import ErrorBoundary from './components/ErrorBoundary';
 import { 
   IconCloud, 
   IconSun, 
   IconMoon, 
-  IconUser, 
-  IconServer, 
-  IconX,
-  IconShield 
+  IconX 
 } from './components/Icons';
 
 const App: React.FC = () => {
@@ -382,7 +380,9 @@ const App: React.FC = () => {
         ) : !user ? (
           <Login onLoginSuccess={() => checkAuth(true)} />
         ) : (
-          <Dashboard />
+          <ErrorBoundary fallbackTitle="Application Error Encountered">
+            <Dashboard />
+          </ErrorBoundary>
         )}
       </main>
     </div>

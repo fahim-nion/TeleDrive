@@ -4,7 +4,6 @@ import {
   IconImage, 
   IconVideo, 
   IconFileText, 
-  IconMusic, 
   IconRefresh, 
   IconShield, 
   IconZap,

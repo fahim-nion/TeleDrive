@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { CloudFile, FileCategory } from '../types';
 import { 
   deleteFileFromTelegram, 
@@ -33,6 +33,7 @@ interface Props {
   onRefresh: () => Promise<void>;
   onLoadMore: () => void;
   loadingMore: boolean;
+  hasMoreRemote?: boolean;
   onFileDeleted?: (messageId: number, size: number, category: FileCategory) => void;
   onBatchFilesDeleted?: (deleted: { messageId: number; size: number; category: FileCategory }[]) => void;
 }
@@ -49,11 +50,12 @@ interface DownloadProgressModalState {
 }
 
 const CloudGallery: React.FC<Props> = ({ 
-  initialFiles, 
+  initialFiles = [], 
   initialCategoryFilter = 'all',
   onRefresh, 
   onLoadMore, 
   loadingMore,
+  hasMoreRemote = true,
   onFileDeleted,
   onBatchFilesDeleted
 }) => {
@@ -103,12 +105,12 @@ const CloudGallery: React.FC<Props> = ({
 
   // Filter & Search & Sort logic
   const filteredAndSortedFiles = useMemo(() => {
-    let result = [...initialFiles];
+    let result = (initialFiles || []).filter(Boolean);
 
     // 1. Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter(f => f.name.toLowerCase().includes(q));
+      result = result.filter(f => (f.name || '').toLowerCase().includes(q));
     }
 
     // 2. Category Filter
@@ -119,19 +121,19 @@ const CloudGallery: React.FC<Props> = ({
     // 3. Sorting
     switch (sortBy) {
       case 'newest':
-        result.sort((a, b) => b.date - a.date);
+        result.sort((a, b) => (b.date || 0) - (a.date || 0));
         break;
       case 'oldest':
-        result.sort((a, b) => a.date - b.date);
+        result.sort((a, b) => (a.date || 0) - (b.date || 0));
         break;
       case 'largest':
-        result.sort((a, b) => b.size - a.size);
+        result.sort((a, b) => (b.size || 0) - (a.size || 0));
         break;
       case 'smallest':
-        result.sort((a, b) => a.size - b.size);
+        result.sort((a, b) => (a.size || 0) - (b.size || 0));
         break;
       case 'name':
-        result.sort((a, b) => a.name.localeCompare(b.name));
+        result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         break;
     }
 
@@ -159,33 +161,41 @@ const CloudGallery: React.FC<Props> = ({
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
+    if (typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting) {
         if (hasMoreLocal) {
           setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredAndSortedFiles.length));
-        } else if (!loadingMore && onLoadMore) {
+        } else if (hasMoreRemote && !loadingMore && onLoadMore && filteredAndSortedFiles.length > 0) {
           onLoadMore();
         }
       }
     }, {
-      rootMargin: '450px',
-      threshold: 0.05
+      rootMargin: '300px',
+      threshold: 0.01
     });
 
     observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMoreLocal, loadingMore, onLoadMore, filteredAndSortedFiles.length]);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreLocal, hasMoreRemote, loadingMore, onLoadMore, filteredAndSortedFiles.length]);
 
   // Date Grouping for Grid View (Progressively grouped from visibleFiles only)
   const groups = useMemo(() => {
     const acc: Record<string, CloudFile[]> = {};
     visibleFiles.forEach(f => {
-      const date = new Date(f.date * 1000).toLocaleDateString(undefined, { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
+      if (!f) return;
+      const ts = (f.date || 0) * 1000;
+      const date = ts > 0 
+        ? new Date(ts).toLocaleDateString(undefined, { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+          })
+        : 'Recent';
       if (!acc[date]) acc[date] = [];
       acc[date].push(f);
     });
@@ -377,9 +387,9 @@ const CloudGallery: React.FC<Props> = ({
 
   // Category counts
   const categoryCounts = useMemo(() => {
-    const counts = { all: initialFiles.length, image: 0, video: 0, document: 0, audio: 0, archive: 0 };
-    initialFiles.forEach(f => {
-      if (f.category in counts) {
+    const counts = { all: (initialFiles || []).length, image: 0, video: 0, document: 0, audio: 0, archive: 0 };
+    (initialFiles || []).forEach(f => {
+      if (f && f.category && f.category in counts) {
         counts[f.category as keyof typeof counts]++;
       }
     });
@@ -1110,7 +1120,7 @@ const CloudGallery: React.FC<Props> = ({
       {/* Infinite Scroll Sentinel & Progressive Stream Controls */}
       <div ref={sentinelRef} style={{ height: '24px', width: '100%', margin: '10px 0', pointerEvents: 'none' }} />
 
-      {(hasMoreLocal || loadingMore) && (
+      {(hasMoreLocal || (hasMoreRemote && filteredAndSortedFiles.length >= 60) || loadingMore) && (
         <div style={{ textAlign: 'center', padding: '16px 0 24px 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <button 
             onClick={() => {
@@ -1140,17 +1150,22 @@ const CloudGallery: React.FC<Props> = ({
                 <IconRefresh size={14} className="spin" />
                 <span>PULLING TELEGRAM CLOUD NODES...</span>
               </>
-            ) : (
+            ) : hasMoreLocal ? (
               <>
                 <IconSparkles size={14} />
                 <span>SHOW NEXT PORTION ({Math.min(visibleCount, filteredAndSortedFiles.length)} of {filteredAndSortedFiles.length})</span>
+              </>
+            ) : (
+              <>
+                <IconSparkles size={14} />
+                <span>LOAD OLDER FILES FROM TELEGRAM</span>
               </>
             )}
           </button>
         </div>
       )}
 
-      {!hasMoreLocal && !loadingMore && filteredAndSortedFiles.length > 0 && (
+      {!hasMoreLocal && !hasMoreRemote && !loadingMore && filteredAndSortedFiles.length > 0 && (
         <div style={{ 
           textAlign: 'center', 
           padding: '24px 0 16px 0', 

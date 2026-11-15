@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import LocalGallery from './LocalGallery';
 import CloudGallery from './CloudGallery';
 import DevCard from './DevCard';
+import ErrorBoundary from './ErrorBoundary';
 import { fetchCloudFiles, getTotalStorageStats } from '../services/cloud';
 import { cacheService } from '../services/cache';
 import { CloudFile, FileCategory, StorageMetricsData } from '../types';
@@ -13,6 +14,7 @@ const Dashboard: React.FC = () => {
   const [cloudFiles, setCloudFiles] = useState<CloudFile[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreRemote, setHasMoreRemote] = useState(true);
 
   // Initialize storage metrics from synchronous cache for zero-delay first paint
   const [metrics, setMetrics] = useState<StorageMetricsData>(() => cacheService.getInitialStatsSync());
@@ -21,6 +23,11 @@ const Dashboard: React.FC = () => {
     try {
       // 1. Fetch newest cloud files
       const data = await fetchCloudFiles(0, 60);
+      if (data.length < 60) {
+        setHasMoreRemote(false);
+      } else {
+        setHasMoreRemote(true);
+      }
       if (data.length > 0) {
         setCloudFiles(prev => {
           const map = new Map(prev.map(f => [f.messageId, f]));
@@ -58,13 +65,16 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
-  const handleLoadMore = async () => {
-    if (loadingMore || cloudFiles.length === 0) return;
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMoreRemote || cloudFiles.length === 0) return;
     setLoadingMore(true);
     try {
       const oldestMessageId = cloudFiles[cloudFiles.length - 1].messageId;
       const olderData = await fetchCloudFiles(oldestMessageId, 60);
-      if (olderData.length > 0) {
+      if (!olderData || olderData.length === 0 || olderData.length < 60) {
+        setHasMoreRemote(false);
+      }
+      if (olderData && olderData.length > 0) {
         setCloudFiles(prev => {
           const existingIds = new Set(prev.map(f => f.messageId));
           const newUnique = olderData.filter(f => !existingIds.has(f.messageId));
@@ -76,7 +86,7 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [loadingMore, hasMoreRemote, cloudFiles]);
 
   // Optimistic real-time update on upload
   const addUploadedFile = (newFile: CloudFile) => {
@@ -283,28 +293,37 @@ const Dashboard: React.FC = () => {
       ) : (
         <>
           {tab === 'local' && (
-            <LocalGallery 
-              cloudFiles={cloudFiles} 
-              metrics={metrics}
-              onRefreshMetrics={() => refreshCloud(true)}
-              onSelectCategory={handleSelectCategoryFromMetrics}
-              onUploadSuccess={addUploadedFile} 
-            />
+            <ErrorBoundary fallbackTitle="Could Not Load Upload Hub">
+              <LocalGallery 
+                cloudFiles={cloudFiles} 
+                metrics={metrics}
+                onRefreshMetrics={() => refreshCloud(true)}
+                onSelectCategory={handleSelectCategoryFromMetrics}
+                onUploadSuccess={addUploadedFile} 
+              />
+            </ErrorBoundary>
           )}
 
           {tab === 'cloud' && (
-            <CloudGallery 
-              initialFiles={cloudFiles} 
-              initialCategoryFilter={cloudCategoryFilter}
-              onRefresh={() => refreshCloud(true)} 
-              onLoadMore={handleLoadMore} 
-              loadingMore={loadingMore} 
-              onFileDeleted={handleFileDeleted}
-              onBatchFilesDeleted={handleBatchFilesDeleted}
-            />
+            <ErrorBoundary fallbackTitle="Could Not Load Cloud Stream">
+              <CloudGallery 
+                initialFiles={cloudFiles} 
+                initialCategoryFilter={cloudCategoryFilter}
+                onRefresh={() => refreshCloud(true)} 
+                onLoadMore={handleLoadMore} 
+                loadingMore={loadingMore} 
+                hasMoreRemote={hasMoreRemote}
+                onFileDeleted={handleFileDeleted}
+                onBatchFilesDeleted={handleBatchFilesDeleted}
+              />
+            </ErrorBoundary>
           )}
 
-          {tab === 'dev' && <DevCard />}
+          {tab === 'dev' && (
+            <ErrorBoundary fallbackTitle="Could Not Load Developer Panel">
+              <DevCard />
+            </ErrorBoundary>
+          )}
         </>
       )}
     </div>

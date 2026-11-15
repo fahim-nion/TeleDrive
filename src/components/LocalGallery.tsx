@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { LocalFile, CloudFile, StorageMetricsData, FileCategory } from '../types';
 import { uploadToTelegram } from '../services/upload';
 import StorageMetrics, { formatBytes } from './StorageMetrics';
@@ -12,7 +12,6 @@ import {
   IconFileText, 
   IconMusic, 
   IconArchive, 
-  IconTrash, 
   IconAlertTriangle 
 } from './Icons';
 import { categorizeFile } from '../services/cloud';
