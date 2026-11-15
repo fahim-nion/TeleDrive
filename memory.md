@@ -152,3 +152,13 @@ TeleDrive is a Web Application using Telegram as a storage backend.
   - Added visible, touch-accessible selection checkboxes on all cards.
   - Integrated `jszip` for batch downloading multiple photos or files into a single, clean ZIP package (`TeleDrive_Photos_X_items.zip`).
   - Added full live download progress modal with percentage and file progress during multi-file downloads.
+
+### Phase 13 (Large Image Thumbnail Engine & Telegram 10MB Limit Bypass)
+- [x] **Telegram >9.99MB Limit Root Cause Identified:** Telegram servers do not automatically generate server-side `doc.thumbs` for documents/uncompressed files over 10 MB.
+- [x] **Client-Side Upload Thumbnails:** Updated `uploadToTelegram` to automatically render downscaled canvas JPEG thumbnails (320px) and pass `thumb: thumbBuffer` directly to `client.sendFile()`. Telegram permanently stores this client-uploaded thumbnail on the document metadata regardless of file size (even for 50MB+ or 500MB+ files).
+- [x] **Dynamic Fallback for Existing Large Images:**
+  - Implemented `generateFallbackThumbnailForLargeImage` in `cloud.ts` with a dedicated concurrency-limited queue (`MAX_LARGE_CONCURRENT = 1`).
+  - When an image has no server thumbnail (`!doc.thumbs`), the engine downloads the file in the background, renders a high-quality 320px thumbnail via canvas, and permanently saves it to IndexedDB (`cacheService`).
+  - Future visits load this thumbnail in **0 ms** directly from local disk cache.
+  - Added HEIC image transcoding fallback support.
+- [x] **UI Polish:** Added `HD` badge and pulse state on `CloudItem` while background thumbnail generation is underway.

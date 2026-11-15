@@ -2,6 +2,7 @@ import { Api } from "telegram";
 import { telegramService } from "./telegram";
 import { cacheService } from "./cache";
 import { CloudFile, FileCategory, StorageMetricsData } from "../types";
+import { renderThumbnailCanvas } from "./upload";
 
 const messageCache = new Map<number, Api.Message>();
 const inflightThumbs = new Map<number, Promise<string | null>>();
@@ -13,6 +14,19 @@ const processQueue = () => {
   if (thumbQueue.length > 0 && activeDownloads < MAX_CONCURRENT) {
     activeDownloads++;
     const next = thumbQueue.shift();
+    if (next) next();
+  }
+};
+
+// Queue for large images (>9.99MB) that lack server-side thumbnails
+const largeThumbQueue: (() => void)[] = [];
+let activeLargeDownloads = 0;
+const MAX_LARGE_CONCURRENT = 1;
+
+const processLargeQueue = () => {
+  if (largeThumbQueue.length > 0 && activeLargeDownloads < MAX_LARGE_CONCURRENT) {
+    activeLargeDownloads++;
+    const next = largeThumbQueue.shift();
     if (next) next();
   }
 };
@@ -114,7 +128,7 @@ export function parseCloudFile(msg: Api.Message): CloudFile | null {
       } else if ((largest as any).bytes) {
         size = (largest as any).bytes.length;
       } else {
-        size = 850 * 1024; // realistic default ~850KB
+        size = 850 * 1024;
       }
     }
 
@@ -134,6 +148,60 @@ export function parseCloudFile(msg: Api.Message): CloudFile | null {
     };
   }
   return null;
+}
+
+// Fallback generator for images >9.99MB where Telegram server omitted doc.thumbs
+async function generateFallbackThumbnailForLargeImage(
+  msg: Api.Message, 
+  doc: Api.Document, 
+  fileName: string, 
+  cacheKey: string
+): Promise<string | null> {
+  const client = telegramService.client;
+  if (!client) return null;
+
+  return new Promise<string | null>((resolve) => {
+    const task = async () => {
+      try {
+        // Download over MTProto with parallel workers
+        const buffer = await client.downloadMedia(msg, { workers: 4 });
+        if (!buffer || buffer.length === 0) {
+          return resolve(null);
+        }
+
+        let sourceBlob = new Blob([buffer], { type: doc.mimeType || 'image/jpeg' });
+
+        // If HEIC image, transcode to JPEG blob first
+        if (fileName.toLowerCase().endsWith('.heic')) {
+          try {
+            const heicModule = await import('heic2any');
+            const heic2any = heicModule.default || heicModule;
+            const converted = await heic2any({ blob: sourceBlob, toType: 'image/jpeg', quality: 0.7 });
+            sourceBlob = Array.isArray(converted) ? converted[0] : converted;
+          } catch (e) {
+            console.warn("Fallback HEIC conversion skipped:", e);
+          }
+        }
+
+        // Render compact 320px thumbnail
+        const thumbArrayBuf = await renderThumbnailCanvas(sourceBlob, 320, 0.75);
+        if (thumbArrayBuf) {
+          await cacheService.setThumbnail(cacheKey, thumbArrayBuf);
+          return resolve(URL.createObjectURL(new Blob([thumbArrayBuf], { type: 'image/jpeg' })));
+        }
+        resolve(null);
+      } catch (err) {
+        console.warn("Could not generate fallback thumbnail for image >10MB:", fileName, err);
+        resolve(null);
+      } finally {
+        activeLargeDownloads--;
+        processLargeQueue();
+      }
+    };
+
+    largeThumbQueue.push(task);
+    processLargeQueue();
+  });
 }
 
 export async function getThumbnail(messageId: number): Promise<string | null> {
@@ -162,23 +230,40 @@ export async function getThumbnail(messageId: number): Promise<string | null> {
         if (msg.media instanceof Api.MessageMediaDocument && msg.media.document instanceof Api.Document) {
           const doc = msg.media.document;
           const thumb = doc.thumbs?.find((t: any) => t instanceof Api.PhotoSize && t.type !== 'i') || doc.thumbs?.[0];
-          if (!thumb) return resolve(null);
 
-          const buffer = await client.downloadFile(
-            new Api.InputDocumentFileLocation({
-              id: doc.id,
-              accessHash: doc.accessHash,
-              fileReference: doc.fileReference,
-              thumbSize: (thumb as any).type
-            }),
-            { workers: 1 }
-          );
+          if (thumb) {
+            // Case A: Telegram provided a server thumbnail (typical for files <= 9.99 MB or client-thumb uploads)
+            const buffer = await client.downloadFile(
+              new Api.InputDocumentFileLocation({
+                id: doc.id,
+                accessHash: doc.accessHash,
+                fileReference: doc.fileReference,
+                thumbSize: (thumb as any).type
+              }),
+              { workers: 1 }
+            );
 
-          if (buffer && buffer.length > 0) {
-            await cacheService.setThumbnail(cacheKey, buffer as any);
-            resolve(URL.createObjectURL(new Blob([buffer], { type: 'image/jpeg' })));
+            if (buffer && buffer.length > 0) {
+              await cacheService.setThumbnail(cacheKey, buffer as any);
+              resolve(URL.createObjectURL(new Blob([buffer], { type: 'image/jpeg' })));
+            } else {
+              resolve(null);
+            }
           } else {
-            resolve(null);
+            // Case B: Telegram has NO server thumbnail (files > 9.99 MB)
+            const fAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeFilename) as Api.DocumentAttributeFilename | undefined;
+            const fileName = fAttr?.fileName || '';
+            const mime = doc.mimeType || '';
+            const isImage = mime.startsWith('image/') || fileName.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|heic|bmp|tiff|avif)$/) !== null;
+
+            // If it's an image and reasonable size (<= 60MB), generate client thumbnail and cache permanently
+            const fileSize = Number(doc.size || 0);
+            if (isImage && fileSize <= 60 * 1024 * 1024) {
+              const fallbackUrl = await generateFallbackThumbnailForLargeImage(msg, doc, fileName, cacheKey);
+              resolve(fallbackUrl);
+            } else {
+              resolve(null);
+            }
           }
         } else if (msg.media instanceof Api.MessageMediaPhoto && msg.media.photo instanceof Api.Photo) {
           const photo = msg.media.photo;
@@ -299,7 +384,6 @@ export async function getTotalStorageStats(
   forceRescan: boolean = false,
   onProgress?: (scanned: number, totalFound: number) => void
 ): Promise<StorageMetricsData> {
-  // 1. Check cached stats first
   if (!forceRescan) {
     const cached = await cacheService.getCachedStats();
     if (cached && cached.totalCount > 0 && Date.now() - cached.lastUpdated < 10 * 60 * 1000) {
@@ -379,7 +463,6 @@ export async function getTotalStorageStats(
         onProgress(messagesScanned, totalCount);
       }
 
-      // If batch is smaller than requested, we reached the beginning of history
       if (messages.length < CHUNK_LIMIT) break;
     }
 
@@ -400,7 +483,6 @@ export async function getTotalStorageStats(
       isScanning: false,
     };
 
-    // Save to IDB & LocalStorage
     await cacheService.saveCachedStats(finalStats);
     if (allParsed.length > 0) {
       await cacheService.saveCachedFiles(allParsed);
@@ -409,14 +491,13 @@ export async function getTotalStorageStats(
     return finalStats;
   } catch (e) {
     console.error("Metric scan partially failed:", e);
-    // Return existing cached stats or default
     return cacheService.getInitialStatsSync();
   }
 }
 
 export async function downloadFileFromTelegram(
   messageId: number,
-  onProgress: (p: number) => void
+  onProgress?: (p: number) => void
 ): Promise<Uint8Array | Buffer> {
   const client = await telegramService.init();
   let msg = messageCache.get(messageId);
@@ -434,7 +515,7 @@ export async function downloadFileFromTelegram(
     progressCallback: (t, d) => {
       const total = Number(t);
       const done = Number(d);
-      if (total > 0) {
+      if (total > 0 && onProgress) {
         onProgress(Math.min(100, Math.round((done / total) * 100)));
       }
     }

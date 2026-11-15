@@ -199,13 +199,25 @@ const CloudItem: React.FC<Props> = ({
             }} 
           />
         ) : (
-          <div style={{ opacity: 0.75, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+          <div style={{ opacity: 0.8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
             {renderIcon()}
-            {extension && (
+            {file.category === 'image' && file.size > 9.99 * 1024 * 1024 ? (
+              <span style={{ 
+                fontSize: '8px', 
+                fontWeight: 800, 
+                color: 'var(--primary)', 
+                background: 'var(--primary-light)', 
+                padding: '1px 5px', 
+                borderRadius: '4px',
+                marginTop: '2px'
+              }}>
+                HD
+              </span>
+            ) : extension ? (
               <span style={{ fontSize: '8px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
                 {extension}
               </span>
-            )}
+            ) : null}
           </div>
         )}
 
