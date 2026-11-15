@@ -1,10 +1,14 @@
 import { telegramService } from "./telegram";
 import { CustomFile } from "telegram/client/uploads";
 import { Buffer } from "buffer";
+import { Api } from "telegram";
 
-export async function uploadToTelegram(fileObj: File, onProgress: (progress: number) => void) {
-  const client = telegramService.client;
-  if (!client || !client.connected) throw new Error("Telegram not connected");
+export async function uploadToTelegram(
+  fileObj: File, 
+  onProgress: (progress: number) => void
+): Promise<Api.Message> {
+  const client = await telegramService.init();
+  if (!client || !client.connected) throw new Error("Telegram is not connected");
 
   const me = await client.getMe();
   const arrayBuffer = await fileObj.arrayBuffer();
@@ -13,18 +17,18 @@ export async function uploadToTelegram(fileObj: File, onProgress: (progress: num
   const toUpload = new CustomFile(fileObj.name, fileObj.size, "", buffer);
 
   try {
-    return await client.sendFile(me, {
+    const result = await client.sendFile(me, {
       file: toUpload,
       caption: `TeleDrive | ${fileObj.name}`,
       forceDocument: true,
-      // TURBO SPEED: Saturated parallel workers
-      workers: 48, 
+      workers: 24,
       onProgress: (progress: number) => {
-        onProgress(Math.round(progress * 100));
+        onProgress(Math.min(100, Math.round(progress * 100)));
       }
     });
+    return result as Api.Message;
   } catch (err: any) {
-    console.error("Turbo Upload Error:", err);
+    console.error("Upload Error:", err);
     throw err;
   }
 }

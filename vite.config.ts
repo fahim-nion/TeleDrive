@@ -12,9 +12,11 @@ export default defineConfig({
     }),
   ],
   define: {
-    // This is the critical fix. 
     // We define a mock version string that 'readable-stream' and others expect.
     'process.version': JSON.stringify('v18.0.0'),
     'process.env': {},
+  },
+  build: {
+    chunkSizeWarningLimit: 3000,
   },
 });

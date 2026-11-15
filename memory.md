@@ -119,3 +119,24 @@ TeleDrive is a Web Application using Telegram as a storage backend.
 ### ADR-004: Deployment Strategy
 - **Decision:** Target Netlify for hosting using `netlify.toml` for SPA routing.
 - **Decision:** Implement PWA for home-screen installation capability.
+
+
+---
+
+## 1. Current Project Status
+**Status:** Robust Frontend Overhaul Complete. Production & GitHub Ready.
+**Current Phase:** Phase 11 — Frontend & UX Overhaul + Storage Metrics Engine.
+**Current Objective:** Comprehensive user satisfaction polish, storage metrics accuracy, and GitHub readiness.
+
+## 3. Completed Work
+### Phase 11 (Frontend & Storage Engine Overhaul)
+- [x] **Accurate Multi-Category Storage Metrics:** Fixed 500-message cap, misclassification of documents as photos, and 0MB flash. Implemented 5-tier categorization (Photos, Videos, Documents, Audio, Archives/Others) with live counts, formatted sizes, percentages, and segmented progress bar.
+- [x] **Instant Synchronous Cache + Deep Background Scanner:** Cached metrics and files in `localStorage` and IndexedDB for 0ms initial load, paired with an incremental background scanner.
+- [x] **Optimistic Real-Time Metric Updates:** Uploads and deletions immediately update storage metrics and file lists with zero reload delay.
+- [x] **Universal File Support & Dropzone:** Implemented drag-and-drop file upload for all file formats (photos, videos, PDFs, office docs, audio, archives) with upload speed (MB/s) and ETA countdown.
+- [x] **Cloud Stream Enhancements:** Added real-time filename search, category filter pills (`All`, `Photos`, `Videos`, `Documents`, `Audio`, `Archives`), sort selector (Newest, Oldest, Largest, Smallest, Name A-Z), and Grid vs List view toggle.
+- [x] **Multi-Select & Batch Actions:** Added select mode allowing batch downloading and batch deletion from Telegram Cloud with clean confirmation modals.
+- [x] **Two-Step Verification (2FA):** Added Telegram 2FA cloud password support in authentication flow.
+- [x] **Universal Media Viewer:** Added keyboard navigation (`ArrowLeft`, `ArrowRight`, `Esc`), metadata drawer (ℹ️), custom audio player, document cards, and real-time download progress bar.
+- [x] **Bundle Optimization:** Dynamically imported `heic2any`, reducing main bundle size by ~1.35 MB.
+- [x] **GitHub & Release Ready:** Added `.env.example` and full documentation `README.md`.
