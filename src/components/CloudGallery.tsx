@@ -138,10 +138,49 @@ const CloudGallery: React.FC<Props> = ({
     return result;
   }, [initialFiles, searchQuery, categoryFilter, sortBy]);
 
-  // Date Grouping for Grid View
+  // Progressive Chunk Rendering & Infinite Scroll Engine
+  const PAGE_SIZE = 36;
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset local pagination when filters/search/sort change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, categoryFilter, sortBy]);
+
+  // Progressive subset slice: Keep DOM light and lag-free
+  const visibleFiles = useMemo(() => {
+    return filteredAndSortedFiles.slice(0, visibleCount);
+  }, [filteredAndSortedFiles, visibleCount]);
+
+  const hasMoreLocal = visibleCount < filteredAndSortedFiles.length;
+
+  // Infinite scroll trigger via IntersectionObserver
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        if (hasMoreLocal) {
+          setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredAndSortedFiles.length));
+        } else if (!loadingMore && onLoadMore) {
+          onLoadMore();
+        }
+      }
+    }, {
+      rootMargin: '450px',
+      threshold: 0.05
+    });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreLocal, loadingMore, onLoadMore, filteredAndSortedFiles.length]);
+
+  // Date Grouping for Grid View (Progressively grouped from visibleFiles only)
   const groups = useMemo(() => {
     const acc: Record<string, CloudFile[]> = {};
-    filteredAndSortedFiles.forEach(f => {
+    visibleFiles.forEach(f => {
       const date = new Date(f.date * 1000).toLocaleDateString(undefined, { 
         month: 'short', 
         day: 'numeric', 
@@ -151,7 +190,7 @@ const CloudGallery: React.FC<Props> = ({
       acc[date].push(f);
     });
     return acc;
-  }, [filteredAndSortedFiles]);
+  }, [visibleFiles]);
 
   // Selection handlers
   const toggleSelectId = (id: number) => {
@@ -828,10 +867,10 @@ const CloudGallery: React.FC<Props> = ({
         </div>
       ))}
 
-      {/* List View */}
-      {viewMode === 'list' && filteredAndSortedFiles.length > 0 && (
+      {/* List View (Progressively sliced) */}
+      {viewMode === 'list' && visibleFiles.length > 0 && (
         <div className="file-list-view">
-          {filteredAndSortedFiles.map((f) => {
+          {visibleFiles.map((f) => {
             const size = formatBytes(f.size);
             const dateStr = new Date(f.date * 1000).toLocaleDateString(undefined, { 
               month: 'short', 
@@ -1068,31 +1107,63 @@ const CloudGallery: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Load More Media Button */}
-      {filteredAndSortedFiles.length > 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0 20px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
+      {/* Infinite Scroll Sentinel & Progressive Stream Controls */}
+      <div ref={sentinelRef} style={{ height: '24px', width: '100%', margin: '10px 0', pointerEvents: 'none' }} />
+
+      {(hasMoreLocal || loadingMore) && (
+        <div style={{ textAlign: 'center', padding: '16px 0 24px 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <button 
-            onClick={(e) => { e.preventDefault(); onLoadMore(); }} 
+            onClick={() => {
+              if (hasMoreLocal) {
+                setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredAndSortedFiles.length));
+              } else if (onLoadMore) {
+                onLoadMore();
+              }
+            }} 
             disabled={loadingMore}
+            className="glass-card"
             style={{ 
-              background: 'var(--primary)', 
-              color: 'white', 
-              border: 'none', 
-              padding: '12px 36px', 
+              color: 'var(--primary)', 
+              padding: '9px 24px', 
               borderRadius: '100px', 
               fontWeight: 800, 
               fontSize: '11px', 
               cursor: 'pointer',
-              boxShadow: '0 8px 20px rgba(99, 102, 241, 0.3)',
               opacity: loadingMore ? 0.6 : 1,
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '8px'
             }}
           >
-            {loadingMore ? <IconRefresh size={14} className="spin" /> : <IconSparkles size={14} />}
-            {loadingMore ? 'PULLING NODES...' : 'LOAD MORE MEDIA'}
+            {loadingMore ? (
+              <>
+                <IconRefresh size={14} className="spin" />
+                <span>PULLING TELEGRAM CLOUD NODES...</span>
+              </>
+            ) : (
+              <>
+                <IconSparkles size={14} />
+                <span>SHOW NEXT PORTION ({Math.min(visibleCount, filteredAndSortedFiles.length)} of {filteredAndSortedFiles.length})</span>
+              </>
+            )}
           </button>
+        </div>
+      )}
+
+      {!hasMoreLocal && !loadingMore && filteredAndSortedFiles.length > 0 && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '24px 0 16px 0', 
+          fontSize: '11px', 
+          fontWeight: 700, 
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px'
+        }}>
+          <span style={{ color: 'var(--success)' }}>●</span>
+          <span>All {filteredAndSortedFiles.length} cloud files loaded</span>
         </div>
       )}
 

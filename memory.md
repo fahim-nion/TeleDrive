@@ -200,3 +200,18 @@ TeleDrive is a Web Application using Telegram as a storage backend.
   - Fixed WebKit/Blink filmstrip horizontal scroll clipping issue.
 - [x] **Global Viewport Overflow Protection:**
   - Enforced `overflow-x: hidden` and `max-width: 100vw` across root and main containers.
+
+### Phase 17 (Progressive Chunk Rendering & Infinite Scroll Engine)
+- [x] **Eliminated Gallery Sluggishness & DOM Overload:**
+  - Replaced bulk rendering of all hundreds/thousands of cloud files with progressive chunk slicing (`PAGE_SIZE = 36`).
+  - React now renders only 36 items initially, keeping the DOM lightweight, responsive, and 60 FPS smooth.
+  - Sliced both Grid View (`groups` derived from `visibleFiles`) and List View (`visibleFiles.map(...)`).
+- [x] **IntersectionObserver Sentinel (Infinite Scroll):**
+  - Added an invisible sentinel element at the bottom with a 450px pre-fetch margin (`rootMargin: '450px'`).
+  - As the user scrolls down, the next 36 items load automatically and seamlessly before reaching the bottom.
+  - Once all local files are shown, reaching the bottom triggers `onLoadMore()` to retrieve the next chunk from Telegram MTProto.
+- [x] **User Experience Polish:**
+  - Added a clean status pill: "SHOW NEXT PORTION (36 of 180)" as a manual fallback and status indicator.
+  - Shows "PULLING TELEGRAM CLOUD NODES..." during network fetches.
+  - Displays "● All X cloud files loaded" upon reaching the end of the collection.
+  - Resets pagination gracefully (`visibleCount = 36`) when switching categories, searching, or changing sort orders.
