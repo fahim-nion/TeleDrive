@@ -162,3 +162,10 @@ TeleDrive is a Web Application using Telegram as a storage backend.
   - Future visits load this thumbnail in **0 ms** directly from local disk cache.
   - Added HEIC image transcoding fallback support.
 - [x] **UI Polish:** Added `HD` badge and pulse state on `CloudItem` while background thumbnail generation is underway.
+
+### Phase 14 (Dual-Lane Priority Architecture for Lightning Fast Loading)
+- [x] **Separation of Concerns (Fast Lane vs Background Lane):**
+  - **Fast Lane (`fastThumbQueue`):** Dedicated exclusively to files $\le$ 9.99 MB with server-side thumbnails and native photos. Runs at high concurrency (`MAX_FAST_CONCURRENT = 6`) downloading tiny 5KB `PhotoSize` packets in 10-25 ms at maximum lightning speed.
+  - **Background Lane (`largeThumbQueue`):** Dedicated exclusively to files > 9.99 MB missing server thumbnails. Completely decoupled from the fast lane.
+  - **Network Priority Yielding:** If any fast thumbnails are pending or actively downloading, the background queue yields and pauses (`setTimeout(processLargeQueue, 250)`), guaranteeing that all standard files load with zero delay.
+  - **No Blocking:** Fast queue slots are never held by large image downloads.

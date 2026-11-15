@@ -6,24 +6,31 @@ import { renderThumbnailCanvas } from "./upload";
 
 const messageCache = new Map<number, Api.Message>();
 const inflightThumbs = new Map<number, Promise<string | null>>();
-const thumbQueue: (() => void)[] = [];
-let activeDownloads = 0;
-const MAX_CONCURRENT = 4;
 
-const processQueue = () => {
-  if (thumbQueue.length > 0 && activeDownloads < MAX_CONCURRENT) {
-    activeDownloads++;
-    const next = thumbQueue.shift();
+// ⚡ PRIORITY 1: FAST QUEUE (Exclusively for <= 9.99MB server thumbnails & photos)
+const fastThumbQueue: (() => void)[] = [];
+let activeFastDownloads = 0;
+const MAX_FAST_CONCURRENT = 6; // High throughput lightning speed
+
+const processFastQueue = () => {
+  if (fastThumbQueue.length > 0 && activeFastDownloads < MAX_FAST_CONCURRENT) {
+    activeFastDownloads++;
+    const next = fastThumbQueue.shift();
     if (next) next();
   }
 };
 
-// Queue for large images (>9.99MB) that lack server-side thumbnails
+// 🐢 PRIORITY 2: BACKGROUND QUEUE (Exclusively for >9.99MB images missing server thumbnails)
 const largeThumbQueue: (() => void)[] = [];
 let activeLargeDownloads = 0;
 const MAX_LARGE_CONCURRENT = 1;
 
 const processLargeQueue = () => {
+  // Yield network priority to fast thumbnails if any are pending or active
+  if (fastThumbQueue.length > 0 || activeFastDownloads > 0) {
+    setTimeout(processLargeQueue, 250);
+    return;
+  }
   if (largeThumbQueue.length > 0 && activeLargeDownloads < MAX_LARGE_CONCURRENT) {
     activeLargeDownloads++;
     const next = largeThumbQueue.shift();
@@ -150,21 +157,21 @@ export function parseCloudFile(msg: Api.Message): CloudFile | null {
   return null;
 }
 
-// Fallback generator for images >9.99MB where Telegram server omitted doc.thumbs
+// Background generator for images >9.99MB (isolated from fast queue)
 async function generateFallbackThumbnailForLargeImage(
   msg: Api.Message, 
   doc: Api.Document, 
   fileName: string, 
   cacheKey: string
 ): Promise<string | null> {
-  const client = telegramService.client;
-  if (!client) return null;
-
   return new Promise<string | null>((resolve) => {
     const task = async () => {
       try {
-        // Download over MTProto with parallel workers
-        const buffer = await client.downloadMedia(msg, { workers: 4 });
+        const client = telegramService.client;
+        if (!client) return resolve(null);
+
+        // Download media with low-impact parallel workers
+        const buffer = await client.downloadMedia(msg, { workers: 2 });
         if (!buffer || buffer.length === 0) {
           return resolve(null);
         }
@@ -206,14 +213,48 @@ async function generateFallbackThumbnailForLargeImage(
 
 export async function getThumbnail(messageId: number): Promise<string | null> {
   const cacheKey = `th_v14:${messageId}`;
+
+  // 1. Instant local disk cache hit (0 ms)
   const cached = await cacheService.getThumbnail(cacheKey);
   if (cached) return cached;
+
+  // 2. Inflight check
   if (inflightThumbs.has(messageId)) return inflightThumbs.get(messageId)!;
 
-  const downloadPromise = new Promise<string | null>((resolve) => {
-    const startDownload = async () => {
+  let msg = messageCache.get(messageId);
+
+  // Check if this is an image >9.99MB with NO server thumbnail
+  let isLargeImageWithoutServerThumb = false;
+  let docRef: Api.Document | null = null;
+  let fileNameRef = '';
+
+  if (msg?.media instanceof Api.MessageMediaDocument && msg.media.document instanceof Api.Document) {
+    docRef = msg.media.document;
+    const hasServerThumb = !!(docRef.thumbs?.find((t: any) => t instanceof Api.PhotoSize && t.type !== 'i') || docRef.thumbs?.[0]);
+    if (!hasServerThumb) {
+      const fAttr = docRef.attributes?.find(a => a instanceof Api.DocumentAttributeFilename) as Api.DocumentAttributeFilename | undefined;
+      fileNameRef = fAttr?.fileName || '';
+      const mime = docRef.mimeType || '';
+      const isImg = mime.startsWith('image/') || fileNameRef.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|heic|bmp|tiff|avif)$/) !== null;
+      if (isImg && Number(docRef.size || 0) <= 60 * 1024 * 1024) {
+        isLargeImageWithoutServerThumb = true;
+      }
+    }
+  }
+
+  // IF LARGE IMAGE (>9.99MB) WITHOUT SERVER THUMBNAIL:
+  // Route to the independent background queue so it NEVER blocks normal thumbnails!
+  if (isLargeImageWithoutServerThumb && docRef && msg) {
+    const largePromise = generateFallbackThumbnailForLargeImage(msg, docRef, fileNameRef, cacheKey);
+    inflightThumbs.set(messageId, largePromise);
+    largePromise.finally(() => inflightThumbs.delete(messageId));
+    return largePromise;
+  }
+
+  // OTHERWISE: FAST PATH (LIGHTNING SPEED FOR <= 9.99MB FILES)
+  const fastPromise = new Promise<string | null>((resolve) => {
+    const startFastDownload = async () => {
       try {
-        let msg = messageCache.get(messageId);
         if (!msg) {
           const client = await telegramService.init();
           const msgs = await client.getMessages("me", { ids: [messageId] });
@@ -232,7 +273,7 @@ export async function getThumbnail(messageId: number): Promise<string | null> {
           const thumb = doc.thumbs?.find((t: any) => t instanceof Api.PhotoSize && t.type !== 'i') || doc.thumbs?.[0];
 
           if (thumb) {
-            // Case A: Telegram provided a server thumbnail (typical for files <= 9.99 MB or client-thumb uploads)
+            // LIGHTNING FAST PATH: Download 5KB PhotoSize via InputDocumentFileLocation
             const buffer = await client.downloadFile(
               new Api.InputDocumentFileLocation({
                 id: doc.id,
@@ -250,17 +291,17 @@ export async function getThumbnail(messageId: number): Promise<string | null> {
               resolve(null);
             }
           } else {
-            // Case B: Telegram has NO server thumbnail (files > 9.99 MB)
+            // No server thumb and not in cache: immediately release fast queue
             const fAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeFilename) as Api.DocumentAttributeFilename | undefined;
             const fileName = fAttr?.fileName || '';
             const mime = doc.mimeType || '';
-            const isImage = mime.startsWith('image/') || fileName.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|heic|bmp|tiff|avif)$/) !== null;
+            const isImg = mime.startsWith('image/') || fileName.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|heic|bmp|tiff|avif)$/) !== null;
 
-            // If it's an image and reasonable size (<= 60MB), generate client thumbnail and cache permanently
-            const fileSize = Number(doc.size || 0);
-            if (isImage && fileSize <= 60 * 1024 * 1024) {
-              const fallbackUrl = await generateFallbackThumbnailForLargeImage(msg, doc, fileName, cacheKey);
-              resolve(fallbackUrl);
+            if (isImg && Number(doc.size || 0) <= 60 * 1024 * 1024) {
+              // Trigger background queue asynchronously without holding the fast queue slot!
+              generateFallbackThumbnailForLargeImage(msg, doc, fileName, cacheKey)
+                .then(resolve)
+                .catch(() => resolve(null));
             } else {
               resolve(null);
             }
@@ -292,17 +333,18 @@ export async function getThumbnail(messageId: number): Promise<string | null> {
       } catch (err) {
         resolve(null);
       } finally {
-        activeDownloads--;
+        activeFastDownloads--;
         inflightThumbs.delete(messageId);
-        processQueue();
+        processFastQueue();
       }
     };
-    thumbQueue.push(startDownload);
-    processQueue();
+
+    fastThumbQueue.push(startFastDownload);
+    processFastQueue();
   });
 
-  inflightThumbs.set(messageId, downloadPromise);
-  return downloadPromise;
+  inflightThumbs.set(messageId, fastPromise);
+  return fastPromise;
 }
 
 export async function getOptimizedPreview(messageId: number): Promise<string | null> {
