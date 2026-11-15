@@ -21,12 +21,37 @@ const Dashboard: React.FC = () => {
     try {
       // 1. Fetch newest cloud files
       const data = await fetchCloudFiles(0, 60);
-      setCloudFiles(data);
+      if (data.length > 0) {
+        setCloudFiles(prev => {
+          const map = new Map(prev.map(f => [f.messageId, f]));
+          data.forEach(f => map.set(f.messageId, f));
+          return Array.from(map.values()).sort((a, b) => b.date - a.date);
+        });
+      }
       setIsInitialLoading(false);
 
-      // 2. Fetch or calculate full storage metrics
-      const stats = await getTotalStorageStats(forceRescan);
+      // 2. Fetch or calculate full storage metrics with live progress streaming
+      const stats = await getTotalStorageStats(forceRescan, (scanned, totalFound, currentBytes, partialStats) => {
+        setMetrics({
+          ...partialStats,
+          isScanning: true,
+          scanProgress: {
+            scannedMessages: scanned,
+            foundFiles: totalFound,
+            currentBytes,
+          },
+        });
+      });
       setMetrics(stats);
+
+      // 3. Merge all files discovered during the deep scan into gallery
+      if (stats.discoveredFiles && stats.discoveredFiles.length > 0) {
+        setCloudFiles(prev => {
+          const map = new Map(prev.map(f => [f.messageId, f]));
+          stats.discoveredFiles!.forEach(f => map.set(f.messageId, f));
+          return Array.from(map.values()).sort((a, b) => b.date - a.date);
+        });
+      }
     } catch (e) {
       console.error("Cloud sync failed:", e);
       setIsInitialLoading(false);
@@ -40,7 +65,11 @@ const Dashboard: React.FC = () => {
       const oldestMessageId = cloudFiles[cloudFiles.length - 1].messageId;
       const olderData = await fetchCloudFiles(oldestMessageId, 60);
       if (olderData.length > 0) {
-        setCloudFiles(prev => [...prev, ...olderData]);
+        setCloudFiles(prev => {
+          const existingIds = new Set(prev.map(f => f.messageId));
+          const newUnique = olderData.filter(f => !existingIds.has(f.messageId));
+          return [...prev, ...newUnique];
+        });
       }
     } catch (e) {
       console.error("Load more failed:", e);

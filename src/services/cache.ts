@@ -22,6 +22,7 @@ export const DEFAULT_STATS: StorageMetricsData = {
   otherCount: 0,
   lastUpdated: 0,
   isScanning: false,
+  scannedAllHistory: false,
 };
 
 class CacheService {

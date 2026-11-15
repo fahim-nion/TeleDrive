@@ -56,6 +56,9 @@ const StorageMetrics: React.FC<Props> = ({
   const videos = formatBytes(videoBytes);
   const docs = formatBytes(docBytes);
   const audio = formatBytes(audioBytes);
+  const docsAndOthersBytes = docBytes + audioBytes + otherBytes;
+  const docsAndOthersCount = docCount + audioCount + otherCount;
+  const docsAndOthers = formatBytes(docsAndOthersBytes);
 
   // Accurate percentages
   const safeTotal = totalBytes > 0 ? totalBytes : 1;
@@ -234,6 +237,38 @@ const StorageMetrics: React.FC<Props> = ({
               <span style={{ opacity: 0.7 }}>Telegram MTProto</span>
             </div>
           </div>
+
+          {/* Live Full History Scan Indicator */}
+          {isScanning && (
+            <div style={{
+              marginTop: '16px',
+              background: 'rgba(255, 255, 255, 0.15)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              fontSize: '11px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              position: 'relative',
+              zIndex: 2,
+            }}>
+              <IconRefresh size={14} className="spin" color="#FFFFFF" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Scanning complete Telegram history...</span>
+                  <span style={{ fontSize: '10px', opacity: 0.85 }}>
+                    {metrics.scanProgress ? `${metrics.scanProgress.scannedMessages} msgs checked` : 'Syncing...'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '10px', opacity: 0.9 }}>
+                  Found {metrics.scanProgress?.foundFiles ?? totalCount} cloud files ({formatBytes(metrics.scanProgress?.currentBytes ?? totalBytes).val} {formatBytes(metrics.scanProgress?.currentBytes ?? totalBytes).unit})
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 2. Photo Category Card */}
@@ -320,14 +355,14 @@ const StorageMetrics: React.FC<Props> = ({
             }}>
               <IconFileText color="var(--accent-doc)" size={18} />
             </div>
-            <span className="badge badge-doc">{docCount + audioCount + otherCount} files</span>
+            <span className="badge badge-doc">{docsAndOthersCount} files</span>
           </div>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px' }}>
               DOCUMENTS & OTHERS
             </div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text)' }}>
-              {docs.val} <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{docs.unit}</span>
+              {docsAndOthers.val} <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{docsAndOthers.unit}</span>
             </div>
           </div>
           <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent-doc)', display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -169,3 +169,16 @@ TeleDrive is a Web Application using Telegram as a storage backend.
   - **Background Lane (`largeThumbQueue`):** Dedicated exclusively to files > 9.99 MB missing server thumbnails. Completely decoupled from the fast lane.
   - **Network Priority Yielding:** If any fast thumbnails are pending or actively downloading, the background queue yields and pauses (`setTimeout(processLargeQueue, 250)`), guaranteeing that all standard files load with zero delay.
   - **No Blocking:** Fast queue slots are never held by large image downloads.
+
+### Phase 15 (100% Comprehensive Storage Metrics & History Streaming Engine)
+- [x] **Root Cause Resolution for Missing Files in Storage Metrics:**
+  - **Paging Bug Fixed:** Replaced flawed manual `client.getMessages("me", { limit: 100, offsetId })` (which omitted `offsetDate` and aborted prematurely on batches `< 100`) with GramJS native async iterator `client.iterMessages("me", { limit: undefined })`. GramJS automatically handles MTProto chunking, `offsetId`, `offsetDate`, and buffer management across the entire Saved Messages history without stopping early.
+  - **Removed Hard Caps:** Eliminated the 2,000-message ceiling (`MAX_MESSAGES = 2000`), allowing complete traversal of all messages in history.
+  - **Accurate Photo Sizing (`extractPhotoSize`):** Fixed Telegram MTProto `PhotoStrippedSize` trap where selecting `photo.sizes[photo.sizes.length - 1]` selected a 50-byte stripped preview string, undercounting photo sizes to 0.0 MB. The new engine traverses all sizes (`PhotoSize`, `PhotoSizeProgressive`, `PhotoCachedSize`) to extract the true maximum byte count.
+  - **Safe 64-Bit Integer Extraction (`extractFileSize`):** Handled GramJS `bigInt.BigInteger`, `BigInt`, `number`, and `string` types with safe `.toJSNumber()` and `.toString()` fallbacks.
+  - **Class Prototype Robustness:** Checked `className` in addition to `instanceof` for `MessageMediaDocument`, `MessageMediaPhoto`, `Document`, and `Photo`.
+  - **Excluded Chat Stickers:** Excluded Telegram chat stickers that lack a filename attribute so chat stickers are not miscounted as drive files.
+  - **Live Scanning Progress Streaming:** Added `scanProgress` updates (`scannedMessages`, `foundFiles`, `currentBytes`) streaming live to `Dashboard` and `StorageMetrics`, displaying a live progress indicator on the hero card while scanning history.
+  - **Real-Time Gallery Ingestion:** Files discovered during full scans are seamlessly merged into `cloudFiles` and saved to IndexedDB so all cloud files appear in the user's gallery view.
+  - **Documents & Others Metric Display:** Updated the "Documents & Others" card in `StorageMetrics` to accurately display the sum of document, audio, and other bytes and file counts.
+  - **Resilient Error Recovery:** Metric calculation preserves accumulated counts on any network interruption instead of wiping progress.

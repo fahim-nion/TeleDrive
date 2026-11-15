@@ -87,32 +87,121 @@ export function categorizeFile(mimeType: string, fileName: string): FileCategory
   return 'other';
 }
 
-export function parseCloudFile(msg: Api.Message): CloudFile | null {
-  if (msg.media instanceof Api.MessageMediaDocument && msg.media.document instanceof Api.Document) {
-    const doc = msg.media.document;
-    const fAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeFilename) as Api.DocumentAttributeFilename | undefined;
-    const vAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeVideo) as Api.DocumentAttributeVideo | undefined;
-    const aAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeAudio) as Api.DocumentAttributeAudio | undefined;
-
-    let fileName = fAttr?.fileName;
-    if (!fileName && aAttr?.title) {
-      fileName = `${aAttr.performer ? aAttr.performer + ' - ' : ''}${aAttr.title}.mp3`;
+export function extractFileSize(rawSize: any): number {
+  if (rawSize == null) return 0;
+  if (typeof rawSize === 'number') return isNaN(rawSize) ? 0 : rawSize;
+  if (typeof rawSize === 'bigint') return Number(rawSize);
+  if (typeof rawSize === 'object') {
+    if (typeof rawSize.toJSNumber === 'function') {
+      try {
+        const val = rawSize.toJSNumber();
+        if (!isNaN(val) && val > 0) return val;
+      } catch {}
     }
-    if (!fileName) {
-      const ext = doc.mimeType?.split('/')[1] || 'bin';
-      fileName = `file_${msg.id}.${ext}`;
+    if (typeof rawSize.toString === 'function') {
+      const val = Number(rawSize.toString());
+      if (!isNaN(val) && val > 0) return val;
+    }
+    if (typeof rawSize.value !== 'undefined') {
+      const val = Number(rawSize.value);
+      if (!isNaN(val) && val > 0) return val;
+    }
+  }
+  const parsed = Number(rawSize);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+export function extractPhotoSize(photo: any): number {
+  if (!photo || !photo.sizes || !Array.isArray(photo.sizes)) return 850 * 1024;
+  let maxBytes = 0;
+
+  for (const s of photo.sizes) {
+    if (!s) continue;
+    let sBytes = 0;
+
+    // 1. PhotoSize with direct .size
+    if (s.size != null) {
+      sBytes = extractFileSize(s.size);
+    }
+    // 2. PhotoSizeProgressive with .sizes array
+    else if (Array.isArray(s.sizes) && s.sizes.length > 0) {
+      const last = s.sizes[s.sizes.length - 1];
+      const maxInArr = Math.max(...s.sizes.map((v: any) => extractFileSize(v)));
+      sBytes = Math.max(extractFileSize(last), maxInArr);
+    }
+    // 3. PhotoCachedSize with .bytes Buffer
+    else if (s.bytes && (s.bytes.length || s.bytes.byteLength)) {
+      const len = s.bytes.length || s.bytes.byteLength || 0;
+      if (s.type !== 'i' && s.className !== 'PhotoStrippedSize') {
+        sBytes = len;
+      }
+    }
+
+    if (sBytes > maxBytes) {
+      maxBytes = sBytes;
+    }
+  }
+
+  // If no high-res size was found or sizes were all stripped (<1KB), fallback to 1.2MB photo average
+  if (maxBytes < 1024) {
+    return 1200 * 1024;
+  }
+  return maxBytes;
+}
+
+export function parseCloudFile(msg: Api.Message): CloudFile | null {
+  if (!msg || !msg.media) return null;
+
+  const media = msg.media;
+  const isDocMedia = media instanceof Api.MessageMediaDocument || (media as any).className === 'MessageMediaDocument';
+  const isPhotoMedia = media instanceof Api.MessageMediaPhoto || (media as any).className === 'MessageMediaPhoto';
+
+  if (isDocMedia && (media as any).document && ((media as any).document instanceof Api.Document || (media as any).document.className === 'Document')) {
+    const doc = (media as any).document as Api.Document;
+    const fAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeFilename || (a as any).className === 'DocumentAttributeFilename') as Api.DocumentAttributeFilename | undefined;
+    const vAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeVideo || (a as any).className === 'DocumentAttributeVideo') as Api.DocumentAttributeVideo | undefined;
+    const aAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeAudio || (a as any).className === 'DocumentAttributeAudio') as Api.DocumentAttributeAudio | undefined;
+    const sAttr = doc.attributes?.find(a => a instanceof Api.DocumentAttributeSticker || (a as any).className === 'DocumentAttributeSticker');
+
+    // Skip chat stickers that have no filename (chat stickers are not user cloud files)
+    if (sAttr && !fAttr?.fileName) {
+      return null;
     }
 
     const mime = doc.mimeType || 'application/octet-stream';
+    let ext = '';
+    if (fAttr?.fileName && fAttr.fileName.includes('.')) {
+      ext = fAttr.fileName.split('.').pop() || '';
+    } else {
+      ext = mime.split('/')[1]?.split(';')[0] || 'bin';
+      if (ext === 'octet-stream') ext = 'bin';
+    }
+
+    let fileName = fAttr?.fileName;
+    if (!fileName) {
+      if (aAttr?.title) {
+        fileName = `${aAttr.performer ? aAttr.performer + ' - ' : ''}${aAttr.title}.${ext || 'mp3'}`;
+      } else if (vAttr) {
+        fileName = `Video_${msg.id}.${ext || 'mp4'}`;
+      } else if (mime.startsWith('image/')) {
+        fileName = `Image_${msg.id}.${ext || 'jpg'}`;
+      } else if (aAttr) {
+        fileName = `Audio_${msg.id}.${ext || 'mp3'}`;
+      } else {
+        fileName = `File_${msg.id}.${ext}`;
+      }
+    }
+
     const isVideo = mime.startsWith('video/') || !!vAttr;
     const isAudio = mime.startsWith('audio/') || !!aAttr;
-    const isImage = mime.startsWith('image/') || fileName.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|heic|bmp|avif)$/) !== null;
+    const isImage = mime.startsWith('image/') || fileName.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|heic|heif|bmp|avif)$/) !== null;
     const category = categorizeFile(mime, fileName);
+    const size = extractFileSize(doc.size);
 
     return {
       messageId: msg.id,
       name: fileName,
-      size: Number(doc.size || 0),
+      size,
       date: msg.date,
       mimeType: fileName.toLowerCase().endsWith('.heic') ? 'image/heic' : mime,
       category,
@@ -123,21 +212,9 @@ export function parseCloudFile(msg: Api.Message): CloudFile | null {
       isImage,
       duration: vAttr?.duration || aAttr?.duration || 0,
     };
-  } else if (msg.media instanceof Api.MessageMediaPhoto && msg.media.photo instanceof Api.Photo) {
-    const photo = msg.media.photo;
-    let size = 0;
-    if (photo.sizes && photo.sizes.length > 0) {
-      const largest = photo.sizes[photo.sizes.length - 1];
-      if ((largest as any).size) {
-        size = (largest as any).size;
-      } else if ((largest as any).sizes && Array.isArray((largest as any).sizes)) {
-        size = (largest as any).sizes.reduce((a: number, b: number) => a + b, 0);
-      } else if ((largest as any).bytes) {
-        size = (largest as any).bytes.length;
-      } else {
-        size = 850 * 1024;
-      }
-    }
+  } else if (isPhotoMedia && (media as any).photo && ((media as any).photo instanceof Api.Photo || (media as any).photo.className === 'Photo')) {
+    const photo = (media as any).photo as Api.Photo;
+    const size = extractPhotoSize(photo);
 
     return {
       messageId: msg.id,
@@ -403,15 +480,33 @@ export async function getOptimizedPreview(messageId: number): Promise<string | n
 
 export async function fetchCloudFiles(offsetId: number = 0, limit: number = 60): Promise<CloudFile[]> {
   const client = await telegramService.init();
-  const messages = await client.getMessages("me", { limit, offsetId });
-  
   const parsedFiles: CloudFile[] = [];
-  for (const msg of messages) {
-    const parsed = parseCloudFile(msg);
-    if (parsed) {
-      messageCache.set(msg.id, msg);
-      parsedFiles.push(parsed);
+
+  try {
+    const iter = client.iterMessages("me", {
+      offsetId: offsetId > 0 ? offsetId : undefined,
+    });
+
+    let rawInspected = 0;
+    // Step through messages to gather target number of actual media files, skipping plain text
+    const MAX_RAW_INSPECT = 400;
+
+    for await (const msg of iter) {
+      rawInspected++;
+      const parsed = parseCloudFile(msg);
+      if (parsed) {
+        messageCache.set(msg.id, msg);
+        parsedFiles.push(parsed);
+        if (parsedFiles.length >= limit) {
+          break;
+        }
+      }
+      if (rawInspected >= MAX_RAW_INSPECT) {
+        break;
+      }
     }
+  } catch (err) {
+    console.warn("fetchCloudFiles error:", err);
   }
 
   // Cache files in IndexedDB
@@ -422,49 +517,82 @@ export async function fetchCloudFiles(offsetId: number = 0, limit: number = 60):
   return parsedFiles;
 }
 
+let activeScanPromise: Promise<StorageMetricsData> | null = null;
+
 export async function getTotalStorageStats(
   forceRescan: boolean = false,
-  onProgress?: (scanned: number, totalFound: number) => void
+  onProgress?: (scanned: number, totalFound: number, currentBytes: number, stats: StorageMetricsData) => void
 ): Promise<StorageMetricsData> {
+  // If a scan is already actively running and the caller isn't strictly forcing a new parallel run, reuse it
+  if (activeScanPromise && !forceRescan) {
+    return activeScanPromise;
+  }
+
+  // Check cached stats if not forcing a rescan
   if (!forceRescan) {
     const cached = await cacheService.getCachedStats();
-    if (cached && cached.totalCount > 0 && Date.now() - cached.lastUpdated < 10 * 60 * 1000) {
+    if (
+      cached &&
+      cached.scannedAllHistory &&
+      cached.totalCount > 0 &&
+      Date.now() - cached.lastUpdated < 15 * 60 * 1000
+    ) {
       return cached;
     }
   }
 
-  const client = await telegramService.init();
+  const runScan = async (): Promise<StorageMetricsData> => {
+    const client = await telegramService.init();
 
-  let totalBytes = 0;
-  let photoBytes = 0;
-  let videoBytes = 0;
-  let docBytes = 0;
-  let audioBytes = 0;
-  let otherBytes = 0;
+    let totalBytes = 0;
+    let photoBytes = 0;
+    let videoBytes = 0;
+    let docBytes = 0;
+    let audioBytes = 0;
+    let otherBytes = 0;
 
-  let totalCount = 0;
-  let photoCount = 0;
-  let videoCount = 0;
-  let docCount = 0;
-  let audioCount = 0;
-  let otherCount = 0;
+    let totalCount = 0;
+    let photoCount = 0;
+    let videoCount = 0;
+    let docCount = 0;
+    let audioCount = 0;
+    let otherCount = 0;
 
-  let offsetId = 0;
-  let messagesScanned = 0;
-  const CHUNK_LIMIT = 100;
-  const MAX_MESSAGES = 2000;
-  const allParsed: CloudFile[] = [];
+    let messagesScanned = 0;
+    const allParsed: CloudFile[] = [];
 
-  try {
-    while (messagesScanned < MAX_MESSAGES) {
-      const messages = await client.getMessages("me", {
-        limit: CHUNK_LIMIT,
-        offsetId,
+    // Trigger initial scanning notification
+    if (onProgress) {
+      onProgress(0, 0, 0, {
+        totalBytes: 0,
+        photoBytes: 0,
+        videoBytes: 0,
+        docBytes: 0,
+        audioBytes: 0,
+        otherBytes: 0,
+        totalCount: 0,
+        photoCount: 0,
+        videoCount: 0,
+        docCount: 0,
+        audioCount: 0,
+        otherCount: 0,
+        lastUpdated: Date.now(),
+        isScanning: true,
+        scannedAllHistory: false,
+      });
+    }
+
+    try {
+      // Use Telegram's native async iterator to traverse the ENTIRE Saved Messages history without truncation
+      const iter = client.iterMessages("me", {
+        limit: undefined,
       });
 
-      if (!messages || messages.length === 0) break;
+      let lastReportTime = Date.now();
 
-      for (const msg of messages) {
+      for await (const msg of iter) {
+        messagesScanned++;
+
         const parsed = parseCloudFile(msg);
         if (parsed) {
           messageCache.set(msg.id, msg);
@@ -496,16 +624,41 @@ export async function getTotalStorageStats(
               break;
           }
         }
+
+        // Throttle progress updates: report every 50 messages or 250ms
+        const now = Date.now();
+        if (onProgress && (messagesScanned % 50 === 0 || now - lastReportTime > 250)) {
+          lastReportTime = now;
+          onProgress(messagesScanned, totalCount, totalBytes, {
+            totalBytes,
+            photoBytes,
+            videoBytes,
+            docBytes,
+            audioBytes,
+            otherBytes,
+            totalCount,
+            photoCount,
+            videoCount,
+            docCount,
+            audioCount,
+            otherCount,
+            lastUpdated: now,
+            isScanning: true,
+            scannedAllHistory: false,
+          });
+
+          // Yield to browser event loop to maintain 60 FPS
+          await new Promise(r => setTimeout(r, 0));
+        }
+
+        // Safe upper boundary to protect memory on astronomical accounts
+        if (messagesScanned >= 100000) {
+          break;
+        }
       }
-
-      messagesScanned += messages.length;
-      offsetId = messages[messages.length - 1].id;
-
-      if (onProgress) {
-        onProgress(messagesScanned, totalCount);
-      }
-
-      if (messages.length < CHUNK_LIMIT) break;
+    } catch (e) {
+      console.warn("Storage metric full scan notice:", e);
+      // NOTE: Do not clear accumulated stats! We retain all scanned items.
     }
 
     const finalStats: StorageMetricsData = {
@@ -523,18 +676,30 @@ export async function getTotalStorageStats(
       otherCount,
       lastUpdated: Date.now(),
       isScanning: false,
+      scannedAllHistory: true,
+      discoveredFiles: allParsed,
     };
 
+    // Save final stats to localStorage and IndexedDB
     await cacheService.saveCachedStats(finalStats);
+
+    // Save all discovered files to IndexedDB
     if (allParsed.length > 0) {
       await cacheService.saveCachedFiles(allParsed);
     }
 
+    if (onProgress) {
+      onProgress(messagesScanned, totalCount, totalBytes, finalStats);
+    }
+
     return finalStats;
-  } catch (e) {
-    console.error("Metric scan partially failed:", e);
-    return cacheService.getInitialStatsSync();
-  }
+  };
+
+  activeScanPromise = runScan().finally(() => {
+    activeScanPromise = null;
+  });
+
+  return activeScanPromise;
 }
 
 export async function downloadFileFromTelegram(

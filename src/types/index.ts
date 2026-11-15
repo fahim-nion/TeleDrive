@@ -46,6 +46,13 @@ export interface StorageMetricsData {
   otherCount: number;
   lastUpdated: number;
   isScanning?: boolean;
+  scannedAllHistory?: boolean;
+  scanProgress?: {
+    scannedMessages: number;
+    foundFiles: number;
+    currentBytes: number;
+  };
+  discoveredFiles?: CloudFile[];
 }
 
 export interface TeleUser {
