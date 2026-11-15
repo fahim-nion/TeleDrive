@@ -519,44 +519,44 @@ const CloudGallery: React.FC<Props> = ({
       )}
 
       {/* Top Header & Toolbar */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         
         {/* Row 1: Header + Action Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px' }}>
-                Cloud Stream
-              </h2>
-              <span className="badge badge-primary">
-                {filteredAndSortedFiles.length}
-              </span>
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', width: '100%', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
+              Cloud Stream
+            </h2>
+            <span className="badge badge-primary">
+              {filteredAndSortedFiles.length}
+            </span>
           </div>
 
           {/* Quick action buttons row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
             {/* Direct Select Photos shortcut */}
             {!isSelectMode && categoryCounts.image > 0 && (
               <button
                 onClick={enterPhotoSelectMode}
                 className="glass-card"
                 style={{
-                  padding: '7px 12px',
+                  padding: '6px 10px',
                   fontWeight: 800,
-                  fontSize: '11px',
+                  fontSize: '10px',
                   cursor: 'pointer',
                   color: 'var(--primary)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px',
+                  gap: '4px',
                   border: '1px solid var(--primary-light)',
                   background: 'var(--primary-light)',
+                  whiteSpace: 'nowrap',
                 }}
                 title="Select photos to download"
               >
                 <IconImage size={13} />
-                <span>SELECT PHOTOS</span>
+                <span className="hide-mobile-extra">SELECT </span>
+                <span>PHOTOS</span>
               </button>
             )}
 
@@ -568,30 +568,31 @@ const CloudGallery: React.FC<Props> = ({
               }}
               className="glass-card"
               style={{
-                padding: '7px 12px',
+                padding: '6px 10px',
                 fontWeight: 800,
-                fontSize: '11px',
+                fontSize: '10px',
                 cursor: 'pointer',
                 color: isSelectMode ? 'white' : 'var(--text)',
                 background: isSelectMode ? 'var(--primary)' : 'var(--surface)',
                 borderColor: isSelectMode ? 'var(--primary)' : 'var(--border)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px'
+                gap: '4px',
+                whiteSpace: 'nowrap',
               }}
             >
-              <IconCheck size={13} />
+              <IconCheck size={12} />
               <span>{isSelectMode ? 'CANCEL' : 'SELECT'}</span>
             </button>
 
             {/* View Mode Toggle */}
-            <div className="glass-card" style={{ display: 'flex', padding: '2px', borderRadius: '10px' }}>
+            <div className="glass-card" style={{ display: 'flex', padding: '2px', borderRadius: '8px' }}>
               <button
                 onClick={() => setViewMode('grid')}
                 title="Grid View"
                 style={{
-                  padding: '5px 8px',
-                  borderRadius: '7px',
+                  padding: '4px 7px',
+                  borderRadius: '6px',
                   border: 'none',
                   background: viewMode === 'grid' ? 'var(--primary)' : 'transparent',
                   color: viewMode === 'grid' ? 'white' : 'var(--text-muted)',
@@ -600,14 +601,14 @@ const CloudGallery: React.FC<Props> = ({
                   alignItems: 'center'
                 }}
               >
-                <IconGrid size={14} />
+                <IconGrid size={13} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
                 title="List View"
                 style={{
-                  padding: '5px 8px',
-                  borderRadius: '7px',
+                  padding: '4px 7px',
+                  borderRadius: '6px',
                   border: 'none',
                   background: viewMode === 'list' ? 'var(--primary)' : 'transparent',
                   color: viewMode === 'list' ? 'white' : 'var(--text-muted)',
@@ -616,7 +617,7 @@ const CloudGallery: React.FC<Props> = ({
                   alignItems: 'center'
                 }}
               >
-                <IconList size={14} />
+                <IconList size={13} />
               </button>
             </div>
 
@@ -626,30 +627,30 @@ const CloudGallery: React.FC<Props> = ({
               disabled={isSyncing}
               className="glass-card" 
               style={{ 
-                padding: '7px 10px', 
+                padding: '6px 9px', 
                 fontWeight: 800, 
                 display: 'flex', 
-                gap: '5px', 
+                gap: '4px', 
                 alignItems: 'center', 
-                fontSize: '11px', 
+                fontSize: '10px', 
                 cursor: 'pointer', 
                 color: 'var(--text)', 
                 opacity: isSyncing ? 0.6 : 1 
               }}
               title="Sync newest messages from Telegram"
             >
-              <IconRefresh size={13} className={isSyncing ? 'spin' : ''} /> 
+              <IconRefresh size={12} className={isSyncing ? 'spin' : ''} /> 
               <span className="hide-mobile-extra">SYNC</span>
             </button>
           </div>
         </div>
 
         {/* Row 2: Search Box & Sort (Full width responsive) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'center', width: '100%', minWidth: 0 }}>
           {/* Search Box */}
-          <div style={{ position: 'relative', width: '100%' }}>
-            <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, display: 'flex' }}>
-              <IconSearch size={15} />
+          <div style={{ position: 'relative', width: '100%', minWidth: 0 }}>
+            <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, display: 'flex' }}>
+              <IconSearch size={14} />
             </div>
             <input 
               type="text" 
@@ -658,13 +659,14 @@ const CloudGallery: React.FC<Props> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                padding: '10px 32px 10px 34px',
-                borderRadius: '12px',
+                padding: '9px 30px 9px 32px',
+                borderRadius: '10px',
                 border: '1px solid var(--border)',
                 background: 'var(--surface)',
                 color: 'var(--text)',
                 fontSize: '12px',
                 outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
             {searchQuery && (
@@ -672,7 +674,7 @@ const CloudGallery: React.FC<Props> = ({
                 onClick={() => setSearchQuery('')}
                 style={{
                   position: 'absolute',
-                  right: '10px',
+                  right: '8px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -688,13 +690,13 @@ const CloudGallery: React.FC<Props> = ({
           </div>
 
           {/* Sort Selector */}
-          <div>
+          <div style={{ minWidth: 0, flexShrink: 0 }}>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
               style={{
-                padding: '10px 12px',
-                borderRadius: '12px',
+                padding: '9px 10px',
+                borderRadius: '10px',
                 border: '1px solid var(--border)',
                 background: 'var(--surface)',
                 color: 'var(--text)',
@@ -702,6 +704,7 @@ const CloudGallery: React.FC<Props> = ({
                 fontWeight: 700,
                 outline: 'none',
                 cursor: 'pointer',
+                boxSizing: 'border-box'
               }}
             >
               <option value="newest">Newest</option>
@@ -714,7 +717,7 @@ const CloudGallery: React.FC<Props> = ({
         </div>
 
         {/* Row 3: Category Filter Pills */}
-        <div className="tabs-scroll-container">
+        <div className="tabs-scroll-container" style={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
           {[
             { id: 'all', label: 'All', count: categoryCounts.all },
             { id: 'image', label: 'Photos', count: categoryCounts.image },
@@ -727,7 +730,7 @@ const CloudGallery: React.FC<Props> = ({
               key={tab.id}
               onClick={() => setCategoryFilter(tab.id as FileCategory)}
               style={{
-                padding: '6px 14px',
+                padding: '6px 12px',
                 borderRadius: '100px',
                 border: categoryFilter === tab.id ? '1px solid var(--primary)' : '1px solid var(--border)',
                 background: categoryFilter === tab.id ? 'var(--primary-light)' : 'var(--surface)',
@@ -739,6 +742,7 @@ const CloudGallery: React.FC<Props> = ({
                 alignItems: 'center',
                 gap: '5px',
                 whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               <span>{tab.label}</span>
@@ -784,24 +788,27 @@ const CloudGallery: React.FC<Props> = ({
 
       {/* Grid View */}
       {viewMode === 'grid' && Object.keys(groups).map(date => (
-        <div key={date} style={{ marginBottom: '24px' }}>
+        <div key={date} style={{ marginBottom: '24px', width: '100%', minWidth: 0, overflow: 'hidden' }}>
           <div 
             style={{ 
               position: 'sticky', 
-              top: '56px', 
-              zIndex: 10, 
-              padding: '6px 12px', 
-              borderRadius: '10px', 
-              marginBottom: '10px', 
+              top: '52px', 
+              zIndex: 15, 
+              padding: '5px 12px', 
+              borderRadius: '8px', 
+              marginBottom: '8px', 
               fontSize: '10px', 
               fontWeight: 800, 
-              letterSpacing: '0.8px', 
+              letterSpacing: '0.6px', 
               color: 'var(--text-secondary)',
-              display: 'inline-block'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
             }} 
             className="glass-card"
           >
-            {date.toUpperCase()} • <span style={{ opacity: 0.6 }}>{groups[date].length}</span>
+            <span>{date.toUpperCase()}</span>
+            <span style={{ opacity: 0.6, fontSize: '9px' }}>({groups[date].length})</span>
           </div>
 
           <div className="gallery-grid">
@@ -937,18 +944,24 @@ const CloudGallery: React.FC<Props> = ({
       {/* Floating Action Bar for Multi-select (Responsive Mobile Bottom Bar) */}
       {isSelectMode && (
         <div className="floating-action-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }}>
-              {selectedIds.size} selected
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexShrink: 1 }}>
+            <span style={{ 
+              fontSize: '11px', 
+              fontWeight: 800, 
+              whiteSpace: 'nowrap',
+              background: 'var(--primary-light)',
+              color: 'var(--primary)',
+              padding: '2px 8px',
+              borderRadius: '100px'
+            }}>
+              {selectedIds.size}
             </span>
-            {selectedIds.size > 0 && (
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                ({formattedSelectedSize.val} {formattedSelectedSize.unit})
-              </span>
-            )}
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} className="hide-mobile-extra">
+              {formattedSelectedSize.val} {formattedSelectedSize.unit}
+            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
             {selectedIds.size < filteredAndSortedFiles.length ? (
               <button 
                 onClick={selectAll} 
@@ -959,11 +972,12 @@ const CloudGallery: React.FC<Props> = ({
                   fontWeight: 800, 
                   fontSize: '10px', 
                   cursor: 'pointer',
-                  padding: '6px 10px',
-                  borderRadius: '100px'
+                  padding: '6px 9px',
+                  borderRadius: '100px',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                SELECT ALL
+                ALL
               </button>
             ) : (
               <button 
@@ -975,11 +989,12 @@ const CloudGallery: React.FC<Props> = ({
                   fontWeight: 800, 
                   fontSize: '10px', 
                   cursor: 'pointer',
-                  padding: '6px 10px',
-                  borderRadius: '100px'
+                  padding: '6px 9px',
+                  borderRadius: '100px',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                DESELECT
+                NONE
               </button>
             )}
 
@@ -991,20 +1006,21 @@ const CloudGallery: React.FC<Props> = ({
                 background: selectedIds.size > 0 ? 'var(--primary)' : 'var(--border)', 
                 color: 'white', 
                 border: 'none', 
-                padding: '8px 16px', 
+                padding: '7px 12px', 
                 borderRadius: '100px', 
                 fontWeight: 800, 
-                fontSize: '11px', 
+                fontSize: '10px', 
                 cursor: selectedIds.size > 0 ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                boxShadow: selectedIds.size > 0 ? '0 4px 14px var(--primary-glow)' : 'none'
+                gap: '4px',
+                boxShadow: selectedIds.size > 0 ? '0 4px 14px var(--primary-glow)' : 'none',
+                whiteSpace: 'nowrap'
               }}
               title="Download selected photos/files"
             >
-              <IconDownload size={13} />
-              <span>DOWNLOAD {selectedIds.size > 1 ? `(${selectedIds.size})` : ''}</span>
+              <IconDownload size={12} />
+              <span>DOWNLOAD{selectedIds.size > 1 ? ` (${selectedIds.size})` : ''}</span>
             </button>
 
             {/* DELETE BUTTON */}
@@ -1018,17 +1034,17 @@ const CloudGallery: React.FC<Props> = ({
                   background: 'rgba(239, 68, 68, 0.15)', 
                   color: 'var(--error)', 
                   border: '1px solid rgba(239, 68, 68, 0.3)', 
-                  padding: '8px 12px', 
+                  padding: '7px 9px', 
                   borderRadius: '100px', 
                   fontWeight: 800, 
-                  fontSize: '11px', 
+                  fontSize: '10px', 
                   cursor: 'pointer',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
+                  alignItems: 'center'
                 }}
+                title="Delete selected"
               >
-                <IconTrash size={13} />
+                <IconTrash size={12} />
               </button>
             )}
 
@@ -1039,14 +1055,14 @@ const CloudGallery: React.FC<Props> = ({
                 background: 'transparent',
                 border: 'none',
                 color: 'var(--text-muted)',
-                padding: '6px',
+                padding: '5px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center'
               }}
               title="Cancel Selection"
             >
-              <IconX size={16} />
+              <IconX size={15} />
             </button>
           </div>
         </div>

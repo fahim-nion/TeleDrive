@@ -168,55 +168,59 @@ const MediaViewer: React.FC<Props> = ({
     }}>
       {/* Top Header */}
       <div style={{ 
-        padding: '14px 24px', 
+        padding: '10px 16px', 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        background: 'rgba(0,0,0,0.6)', 
+        background: 'rgba(0,0,0,0.75)', 
         zIndex: 3010,
-        borderBottom: '1px solid rgba(255,255,255,0.08)'
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        gap: '8px',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         {/* Left: Close & File Name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
           <button 
             onClick={onClose} 
             style={{ 
               color: 'white', 
-              background: 'rgba(255,255,255,0.1)', 
+              background: 'rgba(255,255,255,0.12)', 
               border: 'none', 
-              padding: '8px 16px', 
+              padding: '6px 12px', 
               borderRadius: '100px', 
               fontWeight: 800, 
               cursor: 'pointer', 
               fontSize: '11px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '4px',
+              flexShrink: 0
             }}
           >
-            <IconX size={14} /> CLOSE
+            <IconX size={14} /> <span className="hide-mobile">CLOSE</span>
           </button>
 
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
             <div style={{ 
               color: 'white', 
-              fontSize: '13px', 
+              fontSize: '12px', 
               fontWeight: 800, 
               whiteSpace: 'nowrap', 
               overflow: 'hidden', 
               textOverflow: 'ellipsis',
-              maxWidth: '300px'
+              maxWidth: '220px'
             }}>
               {f.name}
             </div>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+            <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
               {size.val} {size.unit} • {currentIndex + 1} of {files.length}
             </div>
           </div>
         </div>
 
         {/* Center: Quality / Decrypting indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="hide-mobile-extra" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {!loading && f.category === 'image' && (
             <div style={{ 
               background: isOriginal ? 'var(--success)' : 'var(--primary)', 
@@ -227,7 +231,7 @@ const MediaViewer: React.FC<Props> = ({
               borderRadius: '100px', 
               letterSpacing: '0.5px' 
             }}>
-              {isOriginal ? 'RAW BYTES (ORIGINAL)' : 'SHARPENING...'}
+              {isOriginal ? 'RAW (ORIGINAL)' : 'SHARPENING...'}
             </div>
           )}
 
@@ -246,10 +250,10 @@ const MediaViewer: React.FC<Props> = ({
         </div>
 
         {/* Right Action buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Zoom Slider for images */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {/* Zoom Slider for images (Desktop only) */}
           {f.category === 'image' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px' }}>
+            <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '4px' }}>
               <input 
                 type="range" 
                 min="1" 
@@ -257,7 +261,7 @@ const MediaViewer: React.FC<Props> = ({
                 step="0.1" 
                 value={zoom} 
                 onChange={(e) => setZoom(parseFloat(e.target.value))} 
-                style={{ width: '70px', accentColor: 'var(--primary)' }} 
+                style={{ width: '60px', accentColor: 'var(--primary)' }} 
                 title={`Zoom: ${Math.round(zoom * 100)}%`}
               />
             </div>
@@ -270,15 +274,15 @@ const MediaViewer: React.FC<Props> = ({
               background: showInfo ? 'var(--primary)' : 'rgba(255,255,255,0.1)', 
               color: 'white', 
               border: 'none', 
-              padding: '8px 12px', 
-              borderRadius: '10px', 
+              padding: '7px 10px', 
+              borderRadius: '8px', 
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center'
             }}
             title="File details"
           >
-            <IconInfo size={16} />
+            <IconInfo size={15} />
           </button>
 
           {/* Download button */}
@@ -288,18 +292,18 @@ const MediaViewer: React.FC<Props> = ({
               background: 'var(--primary)', 
               color: 'white', 
               border: 'none', 
-              padding: '8px 14px', 
-              borderRadius: '10px', 
+              padding: '7px 12px', 
+              borderRadius: '8px', 
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '5px',
               fontWeight: 800,
               fontSize: '11px'
             }}
             title="Download file"
           >
-            <IconDownload size={14} /> DOWNLOAD
+            <IconDownload size={14} /> <span className="hide-mobile">DOWNLOAD</span>
           </button>
 
           {/* Delete button */}
@@ -309,15 +313,15 @@ const MediaViewer: React.FC<Props> = ({
               background: 'rgba(239, 68, 68, 0.2)', 
               color: '#EF4444', 
               border: '1px solid rgba(239, 68, 68, 0.4)', 
-              padding: '8px 12px', 
-              borderRadius: '10px', 
+              padding: '7px 10px', 
+              borderRadius: '8px', 
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center'
             }}
             title="Delete file"
           >
-            <IconTrash size={16} />
+            <IconTrash size={15} />
           </button>
         </div>
       </div>
@@ -379,23 +383,10 @@ const MediaViewer: React.FC<Props> = ({
         <button 
           onClick={() => onIndexChange(currentIndex - 1)} 
           disabled={currentIndex === 0} 
+          className="viewer-nav-btn prev"
           style={{ 
-            position: 'absolute', 
-            left: '20px', 
-            top: '50%', 
-            transform: 'translateY(-50%)', 
-            background: 'rgba(255,255,255,0.08)', 
-            color: 'white', 
-            border: 'none', 
-            width: '44px', 
-            height: '64px', 
-            borderRadius: '14px', 
-            zIndex: 3020, 
             opacity: currentIndex === 0 ? 0.2 : 1, 
-            cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            cursor: currentIndex === 0 ? 'not-allowed' : 'pointer'
           }}
         >
           <IconChevronLeft size={24} />
@@ -528,23 +519,10 @@ const MediaViewer: React.FC<Props> = ({
         <button 
           onClick={() => onIndexChange(currentIndex + 1)} 
           disabled={currentIndex === files.length - 1} 
+          className="viewer-nav-btn next"
           style={{ 
-            position: 'absolute', 
-            right: '20px', 
-            top: '50%', 
-            transform: 'translateY(-50%)', 
-            background: 'rgba(255,255,255,0.08)', 
-            color: 'white', 
-            border: 'none', 
-            width: '44px', 
-            height: '64px', 
-            borderRadius: '14px', 
-            zIndex: 3020, 
             opacity: currentIndex === files.length - 1 ? 0.2 : 1, 
-            cursor: currentIndex === files.length - 1 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            cursor: currentIndex === files.length - 1 ? 'not-allowed' : 'pointer'
           }}
         >
           <IconChevronRight size={24} />
@@ -552,19 +530,7 @@ const MediaViewer: React.FC<Props> = ({
 
         {/* Info Drawer */}
         {showInfo && (
-          <div style={{
-            position: 'absolute',
-            right: '20px',
-            top: '20px',
-            background: 'rgba(18, 24, 36, 0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '20px',
-            padding: '24px',
-            width: '280px',
-            zIndex: 3030,
-            backdropFilter: 'blur(20px)',
-            color: 'white'
-          }}>
+          <div className="viewer-info-drawer">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '12px', fontWeight: 800 }}>FILE METRICS</span>
               <button 
@@ -606,14 +572,16 @@ const MediaViewer: React.FC<Props> = ({
 
       {/* Bottom Carousel Filmstrip */}
       <div style={{ 
-        padding: '12px 20px', 
+        padding: '10px 14px', 
         background: 'rgba(0,0,0,0.85)', 
         display: 'flex', 
         gap: '8px', 
-        justifyContent: 'center', 
         overflowX: 'auto', 
         zIndex: 3010,
-        borderTop: '1px solid rgba(255,255,255,0.08)'
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        width: '100%',
+        boxSizing: 'border-box',
+        WebkitOverflowScrolling: 'touch'
       }}>
         {files.map((item, i) => (
           <div 

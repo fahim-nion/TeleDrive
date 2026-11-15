@@ -182,3 +182,21 @@ TeleDrive is a Web Application using Telegram as a storage backend.
   - **Real-Time Gallery Ingestion:** Files discovered during full scans are seamlessly merged into `cloudFiles` and saved to IndexedDB so all cloud files appear in the user's gallery view.
   - **Documents & Others Metric Display:** Updated the "Documents & Others" card in `StorageMetrics` to accurately display the sum of document, audio, and other bytes and file counts.
   - **Resilient Error Recovery:** Metric calculation preserves accumulated counts on any network interruption instead of wiping progress.
+
+### Phase 16 (Mobile Gallery & Viewer Layer Overhaul)
+- [x] **Grid Overflow Bug Fixed:**
+  - Resolved CSS Grid `min-width: auto` blowout on `.gallery-grid` children and `.cloud-item`. Long un-truncated filenames previously expanded grid cells beyond the screen width. Applied `min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; box-sizing: border-box !important;` to `.gallery-grid > *`, `.cloud-item`, and meta-footer containers.
+  - Added ultra-narrow fallback (`repeat(2, 1fr)`) for screens $\le 340\text{px}$.
+- [x] **Toolbar & Filter Row Responsiveness:**
+  - Compacted action buttons (Photos, Select, Grid/List, Sync) for mobile viewports so they wrap gracefully without breaking out of the container.
+  - Ensured `.tabs-scroll-container` has `width: 100%; max-width: 100%; min-width: 0;` with smooth iOS touch scrolling.
+  - Refactored sticky date badges to avoid collision or overlap with the sticky navigation bar.
+- [x] **Floating Action Bar Multi-Select Overflow:**
+  - Redesigned the floating bottom selection bar on mobile ($\le 540\text{px}$): dynamically sized rounded container (`border-radius: 16px`, `width: calc(100% - 16px)`), responsive action labels, preventing items from wrapping out of the pill shape.
+- [x] **MediaViewer Lightbox Mobile Polish:**
+  - Compacted the lightbox top header: text truncation for long file titles, icon-only buttons on mobile for Download and Close, and hidden desktop zoom slider.
+  - Reduced next/prev navigation chevron overlay footprint on mobile screens (`32px x 48px`, placed close to edges).
+  - Transformed the file info drawer on mobile into a centered bottom sheet.
+  - Fixed WebKit/Blink filmstrip horizontal scroll clipping issue.
+- [x] **Global Viewport Overflow Protection:**
+  - Enforced `overflow-x: hidden` and `max-width: 100vw` across root and main containers.

@@ -406,7 +406,11 @@ const LocalGallery: React.FC<Props> = ({
                     padding: '8px', 
                     position: 'relative', 
                     borderRadius: '16px',
-                    borderColor: f.status === 'FAILED' ? 'var(--error)' : f.status === 'COMPLETED' ? 'var(--success)' : 'var(--border)'
+                    borderColor: f.status === 'FAILED' ? 'var(--error)' : f.status === 'COMPLETED' ? 'var(--success)' : 'var(--border)',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    boxSizing: 'border-box'
                   }}
                 >
                   {/* Remove Button for non-uploading */}

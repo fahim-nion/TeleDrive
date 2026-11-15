@@ -110,7 +110,11 @@ const CloudItem: React.FC<Props> = ({
         transform: isSelected ? 'scale(0.97)' : 'none',
         userSelect: 'none',
         WebkitUserSelect: 'none',
-        touchAction: 'manipulation'
+        touchAction: 'manipulation',
+        minWidth: 0,
+        maxWidth: '100%',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
       }} 
       onClick={handleCardClick}
     >
@@ -259,7 +263,7 @@ const CloudItem: React.FC<Props> = ({
       </div>
 
       {/* Meta Footer */}
-      <div style={{ padding: '6px 2px 2px 2px' }}>
+      <div style={{ padding: '4px 2px 2px 2px', minWidth: 0, width: '100%', overflow: 'hidden' }}>
         <div 
           style={{ 
             fontSize: '10px', 
@@ -269,7 +273,9 @@ const CloudItem: React.FC<Props> = ({
             textOverflow: 'ellipsis', 
             color: 'var(--text)',
             lineHeight: 1.2,
-            marginBottom: '2px'
+            marginBottom: '2px',
+            minWidth: 0,
+            width: '100%'
           }}
           title={file.name}
         >
@@ -282,10 +288,13 @@ const CloudItem: React.FC<Props> = ({
           alignItems: 'center', 
           fontSize: '9px', 
           color: 'var(--text-muted)', 
-          fontWeight: 700 
+          fontWeight: 700,
+          minWidth: 0,
+          width: '100%',
+          overflow: 'hidden'
         }}>
-          <span>{size.val} {size.unit}</span>
-          <span className="hide-mobile-extra">
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{size.val} {size.unit}</span>
+          <span className="hide-mobile-extra" style={{ flexShrink: 0 }}>
             {new Date(file.date * 1000).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
           </span>
         </div>
